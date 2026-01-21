@@ -1,1 +1,0 @@
-# double-slider-registration-and-login-page

@@ -24,10 +24,14 @@ return new class extends Migration {
             $table->string('no_telepon', 20)->nullable();
 
             $table->enum('grup_wilayah', [
-                'Calon Anggota',
-                'Nasabah Non Anggota',
-                'Anggota'
-            ])->default('Calon Anggota');
+                'Karyawan Koperasi',
+                'Karyawan PKWT',
+                'Karyawan Tetap',
+                'Non Karyawan',
+                'Outsourcing',
+                'Pensiun',
+                'Petugas Gudang Pengolah'
+            ])->default('Non Karyawan');
 
             $table->string('jenis_identitas', 20)->nullable();
             $table->string('no_identitas', 30)->nullable();

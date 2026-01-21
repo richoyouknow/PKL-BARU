@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
@@ -16,7 +17,7 @@ Route::get('/', [BerandaController::class, 'index'])->name('beranda');
 Route::middleware('auth')->group(function () {
     Route::get('/simpanan', [SimpananController::class, 'index'])->name('simpanan');
     Route::get('/pinjaman', [PinjamanController::class, 'index'])->name('pinjaman');
-     Route::get('/transaksi', [transaksiController::class, 'index'])->name('transaksi');
+    Route::get('/transaksi', [transaksiController::class, 'index'])->name('transaksi');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -49,11 +50,6 @@ Route::prefix('simpanan')->name('simpanan.')->group(function () {
     Route::get('/detail/{id}', [SimpananController::class, 'detail'])->name('detail');
 });
 
-// Route::middleware(['auth', 'check_role:admin,anggota'])->group(function () {
-//     Route::get('/profile', fn() => view('profile'))->name('profile');
-//     Route::get('/editprofile', fn() => view('editprofile'))->name('profile.edit');
-// });
-
 Route::middleware(['auth', 'role:anggota'])->prefix('anggota')->name('anggota.')->group(function () {
 
     // Transaksi Routes
@@ -62,7 +58,6 @@ Route::middleware(['auth', 'role:anggota'])->prefix('anggota')->name('anggota.')
         Route::get('/export', [transaksiController::class, 'export'])->name('export');
         Route::get('/{id}', [transaksiController::class, 'show'])->name('show');
     });
-
 });
 
 
@@ -88,15 +83,33 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
+
+
+// GET untuk menampilkan form registrasi
+Route::get('/register', function () {
+    return view('register');
+})->name('register.form');
+
+// POST untuk memproses registrasi
 Route::post('/register', [AuthController::class, 'register'])->name('register');
-Route::get('/loginn', function () {
-    return view('loginn');
-})->name('login');
-Route::post('/loginn', [AuthController::class, 'login']);
-Route::group(['middleware' => ['auth', 'check_role:anggota']], function() {
-Route::get('/anggota', [BerandaController::class, 'index']);
+
+// GET untuk menampilkan form login
+Route::get('/login', function () {
+    return view('login');
+})->name('login.form');
+
+// POST untuk memproses login
+Route::post('/login', [AuthController::class, 'login'])->name('login');
+
+// Route yang dilindungi
+Route::group(['middleware' => ['auth', 'check_role:anggota']], function () {
+    Route::get('/anggota', [BerandaController::class, 'index']);
 });
-// Route::group(['middleware' => ['auth', 'check_role:admin']], function() {
-// Route::get('/admin', [AdminController::class, 'index']);
-// });
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::prefix('admin')->group(function () {
+    Route::get('/login', function () {
+        return redirect()->route('login');
+    })->name('filament.admin.auth.login');
+});

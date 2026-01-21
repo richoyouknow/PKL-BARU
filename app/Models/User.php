@@ -22,6 +22,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'name',
+        'email',
+        'password',
+        'role',
+        'status',
+        'alamat',
     ];
 
     /**
@@ -47,10 +53,25 @@ class User extends Authenticatable
         ];
     }
 
-public function anggota()
-{
-    return $this->hasOne(\App\Models\Anggota::class, 'user_id', 'id');
-}
+    public function anggota()
+    {
+        return $this->hasOne(\App\Models\Anggota::class, 'user_id', 'id');
+    }
+
+        public function isVerified()
+    {
+        return $this->status === 'active';
+    }
+
+    public function isPendingVerification()
+    {
+        return $this->status === 'verify';
+    }
+
+    public function isBanned()
+    {
+        return $this->status === 'banned';
+    }
 
 
 }

@@ -22,12 +22,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'name',
-        'email',
-        'password',
         'role',
         'status',
         'alamat',
+        'reset_password_token',
+        'reset_password_token_expires_at',
     ];
 
     /**
@@ -38,6 +37,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'reset_password_token',
     ];
 
     /**
@@ -50,6 +50,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'reset_password_token_expires_at' => 'datetime',
         ];
     }
 
@@ -58,7 +59,7 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\Anggota::class, 'user_id', 'id');
     }
 
-        public function isVerified()
+    public function isVerified()
     {
         return $this->status === 'active';
     }
@@ -73,5 +74,29 @@ class User extends Authenticatable
         return $this->status === 'banned';
     }
 
+    // Method untuk generate reset token
+    public function generateResetToken()
+    {
+        $this->reset_password_token = rand(100000, 999999); // 6 digit
+        $this->reset_password_token_expires_at = now()->addMinutes(30);
+        $this->save();
 
+        return $this->reset_password_token;
+    }
+
+    // Method untuk clear reset token
+    public function clearResetToken()
+    {
+        $this->reset_password_token = null;
+        $this->reset_password_token_expires_at = null;
+        $this->save();
+    }
+
+    // Method untuk validasi token
+    public function isValidResetToken($token)
+    {
+        return $this->reset_password_token === $token &&
+               $this->reset_password_token_expires_at &&
+               $this->reset_password_token_expires_at->isFuture();
+    }
 }

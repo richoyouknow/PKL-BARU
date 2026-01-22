@@ -4,11 +4,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AnggotaControler;
+use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\PinjamanController;
 use App\Http\Controllers\SimpananController;
 use App\Http\Controllers\transaksiController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileAnggotaController;
-use App\Http\Controllers\BerandaController;
 
 
 
@@ -87,7 +88,7 @@ Route::middleware(['auth'])->group(function () {
 
 // GET untuk menampilkan form registrasi
 Route::get('/register', function () {
-    return view('register');
+    return view('auth.register');
 })->name('register.form');
 
 // POST untuk memproses registrasi
@@ -95,7 +96,7 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 
 // GET untuk menampilkan form login
 Route::get('/login', function () {
-    return view('login');
+    return view('auth.login');
 })->name('login.form');
 
 // POST untuk memproses login
@@ -113,3 +114,25 @@ Route::prefix('admin')->group(function () {
         return redirect()->route('login');
     })->name('filament.admin.auth.login');
 });
+
+// Password Reset Routes
+Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])
+    ->name('password.forgot');
+
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetCode'])
+    ->name('password.email');
+
+Route::get('/verify-code', [PasswordResetController::class, 'showVerifyForm'])
+    ->name('password.verify');
+
+Route::post('/verify-code', [PasswordResetController::class, 'verifyCode'])
+    ->name('password.verify.submit');
+
+Route::get('/reset-password', [PasswordResetController::class, 'showResetForm'])
+    ->name('password.reset');
+
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])
+    ->name('password.update');
+
+Route::post('/resend-code', [PasswordResetController::class, 'resendCode'])
+    ->name('password.resend');

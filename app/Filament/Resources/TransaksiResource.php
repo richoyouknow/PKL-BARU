@@ -26,7 +26,7 @@ class TransaksiResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Transaksi';
 
-    protected static ?string $navigationGroup = 'Keuangan';
+    protected static ?string $navigationGroup = 'Transaksi';
 
     protected static ?int $navigationSort = 3;
 

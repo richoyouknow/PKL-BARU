@@ -79,7 +79,7 @@
         <div class="popup-box">
             <h4 class="mb-2">Login Diperlukan</h4>
             <p class="popup-text">Anda harus login terlebih dahulu untuk mengakses halaman ini.</p>
-            <a href="/loginn" class="btn btn-primary w-100 mt-3">Login Sekarang</a>
+            <a href="/login" class="btn btn-primary w-100 mt-3">Login Sekarang</a>
         </div>
     </div>
 

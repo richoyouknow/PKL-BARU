@@ -72,48 +72,41 @@ class Anggota extends Model
                 $anggota->tanggal_daftar = now();
             }
 
-            // Set no_anggota otomatis jika status Anggota
-            if ($anggota->grup_wilayah === 'Anggotas' && empty($anggota->no_anggota)) {
-                $lastAnggotaNumber = self::withTrashed()
-                    ->where('grup_wilayah', 'Anggota')
-                    ->whereNotNull('no_anggota')
-                    ->orderBy('id', 'desc')
-                    ->first();
-
-                if ($lastAnggotaNumber && preg_match('/^(\d+)$/', $lastAnggotaNumber->no_anggota, $matches)) {
-                    $nextAnggotaNumber = (int)$matches[1] + 1;
-                } else {
-                    $nextAnggotaNumber = 1;
-                }
-
-                $anggota->no_anggota = str_pad($nextAnggotaNumber, 6, '0', STR_PAD_LEFT);
+            // Generate no_anggota otomatis untuk semua grup wilayah
+            if (empty($anggota->no_anggota)) {
+                $anggota->no_anggota = self::generateNoAnggota();
             }
         });
 
         static::updating(function ($anggota) {
-            // Jika status berubah menjadi Anggota dan belum ada no_anggota
-            if ($anggota->grup_wilayah === 'Anggota' && empty($anggota->no_anggota)) {
-                $lastAnggotaNumber = self::withTrashed()
-                    ->where('grup_wilayah', 'Anggota')
-                    ->whereNotNull('no_anggota')
-                    ->where('id', '!=', $anggota->id)
-                    ->orderBy('id', 'desc')
-                    ->first();
-
-                if ($lastAnggotaNumber && preg_match('/^(\d+)$/', $lastAnggotaNumber->no_anggota, $matches)) {
-                    $nextAnggotaNumber = (int)$matches[1] + 1;
-                } else {
-                    $nextAnggotaNumber = 1;
-                }
-
-                $anggota->no_anggota = str_pad($nextAnggotaNumber, 6, '0', STR_PAD_LEFT);
-            }
-
-            // Jika status berubah dari Anggota ke yang lain, kosongkan no_anggota
-            if ($anggota->grup_wilayah !== 'Anggota' && !empty($anggota->no_anggota)) {
-                $anggota->no_anggota = null;
+            // Generate no_anggota jika belum ada (untuk data lama yang di-update)
+            if (empty($anggota->no_anggota)) {
+                $anggota->no_anggota = self::generateNoAnggota();
             }
         });
+    }
+
+    /**
+     * Generate nomor anggota otomatis
+     * Format: AGT-YYYY-NNNNNN
+     */
+    public static function generateNoAnggota()
+    {
+        $prefix = 'AGT';
+        $year = date('Y');
+
+        $lastAnggota = self::withTrashed()
+            ->where('no_anggota', 'like', "{$prefix}-{$year}-%")
+            ->orderBy('no_anggota', 'desc')
+            ->first();
+
+        if ($lastAnggota && preg_match('/' . $prefix . '-' . $year . '-(\d+)/', $lastAnggota->no_anggota, $matches)) {
+            $nextNumber = (int)$matches[1] + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+        return sprintf('%s-%s-%06d', $prefix, $year, $nextNumber);
     }
 
     public function user(): BelongsTo

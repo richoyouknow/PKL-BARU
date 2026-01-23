@@ -18,7 +18,9 @@ class SliderResource extends Resource
 
     protected static ?string $navigationLabel = 'Slider Iklan';
 
-    protected static ?string $navigationGroup = 'Konten';
+    protected static ?string $navigationGroup = 'Konten Website';
+
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {

@@ -121,15 +121,19 @@ class AnggotaResource extends Resource
                                         Select::make('grup_wilayah')
                                             ->label('Grup Wilayah')
                                             ->options([
-                                                'Calon Anggota' => 'Calon Anggota',
-                                                'Nasabah Non Anggota' => 'Nasabah Non Anggota',
-                                                'Anggota' => 'Anggota',
+                                            'Karyawan Koperasi' => 'Karyawan Koperasi',
+                                            'Karyawan PKWT' => 'Karyawan PKWT',
+                                            'Karyawan Tetap' => 'Karyawan Tetap',
+                                            'Non Karyawan' => 'Non Karyawan',
+                                            'Outsourcing' => 'Outsourcing',
+                                            'Pensiun' => 'Pensiun',
+                                            'Petugas Gudang Pengolah' => 'Petugas Gudang Pengolah',
                                             ])
-                                            ->default('Calon Anggota')
+                                            ->default('Non Karyawan')
                                             ->required()
                                             ->reactive()
                                             ->afterStateUpdated(function ($state, callable $set) {
-                                                if ($state !== 'Anggota') {
+                                                if ($state !== 'Karyawan Koperasi') { // ✅ contoh kondisi valid
                                                     $set('no_anggota', null);
                                                 }
                                             }),
@@ -293,11 +297,15 @@ class AnggotaResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('grup_wilayah')
-                    ->label('Filter Status')
+                    ->label('Grup Wilayah')
                     ->options([
-                        'Calon Anggota' => 'Calon Anggota',
-                        'Nasabah Non Anggota' => 'Nasabah Non Anggota',
-                        'Anggota' => 'Anggota',
+                        'Karyawan Koperasi' => 'Karyawan Koperasi',
+                        'Karyawan PKWT' => 'Karyawan PKWT',
+                        'Karyawan Tetap' => 'Karyawan Tetap',
+                        'Non Karyawan' => 'Non Karyawan',
+                        'Outsourcing' => 'Outsourcing',
+                        'Pensiun' => 'Pensiun',
+                        'Petugas Gudang Pengolah' => 'Petugas Gudang Pengolah',
                     ]),
             ])
             ->actions([

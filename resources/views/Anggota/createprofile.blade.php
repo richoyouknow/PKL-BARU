@@ -54,19 +54,11 @@
 @endpush
 @section('content')
     <main class="tw-flex-1 tw-w-full tw-max-w-[1200px] tw-mx-auto tw-p-4 md:tw-p-8">
-        <form action="{{ route('profile.store') }}" enctype="multipart/form-data" method="POST">
+        <form action="{{ route('profile.update') }}" enctype="multipart/form-data" method="POST">
             @csrf
+            @method('PUT')
 
             {{-- Alert Messages --}}
-            @if(session('info'))
-                <div class="tw-bg-blue-50 dark:tw-bg-blue-900/30 tw-border tw-border-blue-200 dark:tw-border-blue-800 tw-text-blue-800 dark:tw-text-blue-200 tw-px-4 tw-py-3 tw-rounded-lg tw-mb-6">
-                    <div class="tw-flex tw-items-start tw-gap-2">
-                        <span class="material-symbols-outlined tw-mt-0.5">info</span>
-                        <p>{{ session('info') }}</p>
-                    </div>
-                </div>
-            @endif
-
             @if($errors->any())
                 <div class="tw-bg-red-50 dark:tw-bg-red-900/30 tw-border tw-border-red-200 dark:tw-border-red-800 tw-text-red-800 dark:tw-text-red-200 tw-px-4 tw-py-3 tw-rounded-lg tw-mb-6">
                     <div class="tw-flex tw-items-start tw-gap-2">
@@ -87,23 +79,23 @@
                 class="tw-mb-8 tw-pb-6 tw-border-b tw-border-border-light dark:tw-border-border-dark tw-flex tw-flex-col md:tw-flex-row md:tw-items-end tw-justify-between tw-gap-6">
                 <div>
                     <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2 tw-text-primary tw-font-semibold tw-text-sm">
-                        <span class="material-symbols-outlined tw-text-[18px]">person_add</span>
-                        <span>Pendaftaran Anggota Baru</span>
+                        <span class="material-symbols-outlined tw-text-[18px]">arrow_back</span>
+                        <a class="hover:tw-underline tw-no-underline" href="{{ route('profile.show') }}">Kembali ke Profil</a>
                     </div>
                     <h1
                         class="tw-text-text-primary-light dark:tw-text-text-primary-dark tw-text-3xl md:tw-text-4xl tw-font-black tw-leading-tight tw-tracking-tight">
-                        Lengkapi Data Anggota
+                        Edit Data Anggota
                     </h1>
                     <p
                         class="tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-text-base md:tw-text-lg tw-mt-2">
-                        Silakan isi formulir di bawah ini untuk mendaftar sebagai anggota
+                        Silakan ubah data pada kolom formulir di bawah ini
                     </p>
                 </div>
                 <div class="tw-hidden md:tw-block">
                     <span
-                        class="tw-inline-flex tw-items-center tw-gap-1.5 tw-px-3 tw-py-1.5 tw-rounded-full tw-bg-green-50 dark:tw-bg-green-900/30 tw-text-green-600 dark:tw-text-green-400 tw-text-xs tw-font-bold tw-border tw-border-green-100 dark:tw-border-green-800">
-                        <span class="material-symbols-outlined tw-text-[16px]">add_circle</span>
-                        PENDAFTARAN BARU
+                        class="tw-inline-flex tw-items-center tw-gap-1.5 tw-px-3 tw-py-1.5 tw-rounded-full tw-bg-blue-50 dark:tw-bg-blue-900/30 tw-text-primary tw-text-xs tw-font-bold tw-border tw-border-blue-100 dark:tw-border-blue-800">
+                        <span class="material-symbols-outlined tw-text-[16px]">edit_note</span>
+                        MODE EDIT
                     </span>
                 </div>
             </div>
@@ -114,9 +106,9 @@
                         class="tw-bg-surface-light dark:tw-bg-surface-dark tw-rounded-xl tw-shadow-sm tw-border tw-border-border-light dark:tw-border-border-dark tw-p-6 tw-flex tw-flex-col tw-items-center tw-sticky tw-top-6">
                         <div class="tw-relative tw-mb-6 tw-group tw-cursor-pointer">
                             <label class="tw-cursor-pointer tw-block tw-relative" for="foto-upload">
-                                <div class="tw-h-32 tw-w-32 tw-rounded-full tw-bg-cover tw-bg-center tw-border-4 tw-border-primary/20 group-hover:tw-border-primary tw-transition-colors tw-bg-slate-200 dark:tw-bg-slate-700"
+                                <div class="tw-h-32 tw-w-32 tw-rounded-full tw-bg-cover tw-bg-center tw-border-4 tw-border-primary/20 group-hover:tw-border-primary tw-transition-colors"
                                     id="foto-preview"
-                                    style="background-image: url('{{ asset('images/default-avatar.png') }}');">
+                                    style="background-image: url('{{ $foto_url }}');">
                                 </div>
                                 <div
                                     class="tw-absolute tw-inset-0 tw-bg-black/40 tw-rounded-full tw-flex tw-items-center tw-justify-center tw-opacity-0 group-hover:tw-opacity-100 tw-transition-opacity">
@@ -124,11 +116,12 @@
                                 </div>
                                 <div
                                     class="tw-absolute tw-bottom-0 tw-right-0 tw-bg-primary tw-text-white tw-p-2 tw-rounded-full tw-shadow-md tw-border-2 tw-border-white dark:tw-border-surface-dark tw-z-10 tw-transition-transform group-hover:tw-scale-110">
-                                    <span class="material-symbols-outlined tw-text-[18px] tw-block">add_photo_alternate</span>
+                                    <span class="material-symbols-outlined tw-text-[18px] tw-block">edit</span>
                                 </div>
                             </label>
                             <input accept="image/*" class="tw-hidden" id="foto-upload" name="foto" type="file" />
-                            <p class="tw-text-center tw-text-xs tw-text-text-secondary-light tw-mt-2">Upload foto profil</p>
+                            <p class="tw-text-center tw-text-xs tw-text-text-secondary-light tw-mt-2">Klik untuk ubah foto
+                            </p>
                         </div>
 
                         <div class="tw-w-full tw-h-px tw-bg-border-light dark:tw-bg-border-dark tw-mb-6"></div>
@@ -139,9 +132,9 @@
                                     <span
                                         class="material-symbols-outlined tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-absolute tw-left-3 tw-top-2.5 tw-text-[20px]">badge</span>
                                     <input class="form-input-custom tw-font-mono tw-pl-10 tw-bg-slate-100 dark:tw-bg-slate-900/50"
-                                        placeholder="Otomatis dibuat sistem" type="text" readonly />
+                                        type="text" value="{{ $anggota->no_anggota }}" readonly />
                                 </div>
-                                <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Format: AGT-YYYY-XXXX</p>
+                                <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Nomor ini di-generate otomatis</p>
                             </div>
                             <div class="tw-flex tw-flex-col tw-gap-1">
                                 <label class="form-label-custom">No. Registrasi</label>
@@ -149,19 +142,17 @@
                                     <span
                                         class="material-symbols-outlined tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-absolute tw-left-3 tw-top-2.5 tw-text-[20px]">confirmation_number</span>
                                     <input class="form-input-custom tw-font-mono tw-pl-10 tw-bg-slate-100 dark:tw-bg-slate-900/50"
-                                        placeholder="Otomatis dibuat sistem" type="text" readonly />
+                                        type="text" value="{{ $anggota->no_registrasi }}" readonly />
                                 </div>
-                                <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Format: REG-YYYYMMDD-XXXX</p>
                             </div>
                             <div class="tw-flex tw-flex-col tw-gap-1">
-                                <label class="form-label-custom">Grup Wilayah</label>
+                                <label class="form-label-custom">Grup Wilayah <span class="tw-text-red-500">*</span></label>
                                 <div class="tw-relative">
                                     <span
                                         class="material-symbols-outlined tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-absolute tw-left-3 tw-top-2.5 tw-text-[20px]">groups</span>
-                                    <select class="form-input-custom tw-pl-10" name="grup_wilayah">
-                                        <option value="Calon Anggota" selected>Calon Anggota</option>
+                                    <select class="form-input-custom tw-pl-10" name="grup_wilayah" required>
                                         @foreach($grup_wilayah_options as $option)
-                                            <option value="{{ $option }}" {{ old('grup_wilayah') == $option ? 'selected' : '' }}>
+                                            <option value="{{ $option }}" {{ old('grup_wilayah', $anggota->grup_wilayah) == $option ? 'selected' : '' }}>
                                                 {{ $option }}
                                             </option>
                                         @endforeach
@@ -173,6 +164,34 @@
                 </div>
 
                 <div class="lg:tw-col-span-8 xl:tw-col-span-9 tw-flex tw-flex-col tw-gap-6">
+                    {{-- Akun & Keanggotaan --}}
+                    <div
+                        class="tw-bg-surface-light dark:tw-bg-surface-dark tw-rounded-xl tw-shadow-sm tw-border tw-border-border-light dark:tw-border-border-dark tw-overflow-hidden">
+                        <div
+                            class="tw-px-6 tw-py-4 tw-border-b tw-border-border-light dark:tw-border-border-dark tw-flex tw-items-center tw-gap-3 tw-bg-slate-50 dark:tw-bg-slate-800/30">
+                            <div
+                                class="tw-p-2 tw-rounded-lg tw-bg-white dark:tw-bg-surface-dark tw-shadow-sm tw-border tw-border-border-light dark:tw-border-border-dark">
+                                <span class="material-symbols-outlined tw-text-primary tw-block">card_membership</span>
+                            </div>
+                            <h3 class="tw-text-lg tw-font-bold tw-text-text-primary-light dark:tw-text-text-primary-dark">
+                                Akun &amp; Keanggotaan</h3>
+                        </div>
+                        <div class="tw-p-6 tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-y-6 tw-gap-x-6">
+                            <div>
+                                <label class="form-label-custom">Tanggal Daftar</label>
+                                <input class="form-input-custom tw-bg-slate-100 dark:tw-bg-slate-900/50"
+                                    type="date"
+                                    value="{{ $anggota->tanggal_daftar?->format('Y-m-d') }}" readonly />
+                                <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Tanggal ini otomatis tersimpan saat pendaftaran</p>
+                            </div>
+                            <div>
+                                <label class="form-label-custom">Keterangan</label>
+                                <input class="form-input-custom" name="keterangan" placeholder="Tambahkan catatan..."
+                                    type="text" value="{{ old('keterangan', $anggota->keterangan) }}" />
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Identitas Diri --}}
                     <div
                         class="tw-bg-surface-light dark:tw-bg-surface-dark tw-rounded-xl tw-shadow-sm tw-border tw-border-border-light dark:tw-border-border-dark tw-overflow-hidden">
@@ -189,24 +208,24 @@
                             <div class="md:tw-col-span-2">
                                 <label class="form-label-custom">Nama Lengkap <span class="tw-text-red-500">*</span></label>
                                 <input class="form-input-custom tw-text-base tw-font-semibold" name="nama" type="text"
-                                    value="{{ old('nama') }}" placeholder="Masukkan nama lengkap" required />
+                                    value="{{ old('nama', $anggota->nama) }}" required />
                             </div>
                             <div>
                                 <label class="form-label-custom">Tempat Lahir</label>
                                 <input class="form-input-custom" name="tempat_lahir" type="text"
-                                    value="{{ old('tempat_lahir') }}" placeholder="Kota kelahiran" />
+                                    value="{{ old('tempat_lahir', $anggota->tempat_lahir) }}" />
                             </div>
                             <div>
                                 <label class="form-label-custom">Tanggal Lahir</label>
                                 <input class="form-input-custom" name="tanggal_lahir" type="date"
-                                    value="{{ old('tanggal_lahir') }}" />
+                                    value="{{ old('tanggal_lahir', $anggota->tanggal_lahir?->format('Y-m-d')) }}" />
                             </div>
                             <div>
                                 <label class="form-label-custom">Jenis Kelamin</label>
                                 <select class="form-input-custom" name="jenis_kelamin">
                                     <option value="">-- Pilih Jenis Kelamin --</option>
                                     @foreach($jenis_kelamin_options as $jk)
-                                        <option value="{{ $jk }}" {{ old('jenis_kelamin') == $jk ? 'selected' : '' }}>
+                                        <option value="{{ $jk }}" {{ old('jenis_kelamin', $anggota->jenis_kelamin) == $jk ? 'selected' : '' }}>
                                             {{ $jk }}
                                         </option>
                                     @endforeach
@@ -217,7 +236,7 @@
                                 <select class="form-input-custom" name="agama">
                                     <option value="">-- Pilih Agama --</option>
                                     @foreach($agama_options as $agama)
-                                        <option value="{{ $agama }}" {{ old('agama') == $agama ? 'selected' : '' }}>
+                                        <option value="{{ $agama }}" {{ old('agama', $anggota->agama) == $agama ? 'selected' : '' }}>
                                             {{ $agama }}
                                         </option>
                                     @endforeach
@@ -226,7 +245,7 @@
                             <div>
                                 <label class="form-label-custom">Nama Pasangan</label>
                                 <input class="form-input-custom" name="nama_pasangan" type="text"
-                                    value="{{ old('nama_pasangan') }}" placeholder="Opsional" />
+                                    value="{{ old('nama_pasangan', $anggota->nama_pasangan) }}" />
                             </div>
                         </div>
                     </div>
@@ -251,7 +270,7 @@
                                     <select class="form-input-custom" name="jenis_identitas">
                                         <option value="">-- Pilih --</option>
                                         @foreach($jenis_identitas_options as $jenis)
-                                            <option value="{{ $jenis }}" {{ old('jenis_identitas') == $jenis ? 'selected' : '' }}>
+                                            <option value="{{ $jenis }}" {{ old('jenis_identitas', $anggota->jenis_identitas) == $jenis ? 'selected' : '' }}>
                                                 {{ $jenis }}
                                             </option>
                                         @endforeach
@@ -260,12 +279,14 @@
                                 <div>
                                     <label class="form-label-custom">Nomor Identitas</label>
                                     <input class="form-input-custom tw-font-mono tw-tracking-wide" name="no_identitas"
-                                        type="text" value="{{ old('no_identitas') }}" placeholder="Nomor KTP/SIM/Paspor" />
+                                        type="text" value="{{ old('no_identitas', $anggota->no_identitas) }}" />
                                 </div>
                                 <div>
                                     <label class="form-label-custom">Berlaku Sampai</label>
-                                    <input class="form-input-custom" name="berlaku_sampai" type="text"
-                                        value="{{ old('berlaku_sampai') }}" placeholder="Seumur Hidup / YYYY-MM-DD" />
+                                    <input class="form-input-custom" name="berlaku_sampai" type="date"
+                                        value="{{ old('berlaku_sampai', $anggota->berlaku_sampai?->format('Y-m-d')) }}"
+                                        placeholder="Kosongkan jika seumur hidup" />
+                                    <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Kosongkan jika identitas berlaku seumur hidup</p>
                                 </div>
                             </div>
                         </div>
@@ -289,13 +310,14 @@
                                         <span
                                             class="material-symbols-outlined tw-text-sm tw-text-text-secondary-light tw-absolute tw-left-3 tw-top-3">call</span>
                                         <input class="form-input-custom tw-pl-9" name="no_telepon" type="tel"
-                                            value="{{ old('no_telepon') }}" placeholder="08xx xxxx xxxx" />
+                                            value="{{ old('no_telepon', $anggota->no_telepon) }}"
+                                            placeholder="08XXXXXXXXXX" />
                                     </div>
                                 </div>
                                 <div>
                                     <label class="form-label-custom">Alamat Rumah</label>
                                     <textarea class="form-input-custom tw-resize-none tw-h-32"
-                                        name="alamat" placeholder="Alamat lengkap tempat tinggal">{{ old('alamat') }}</textarea>
+                                        name="alamat" placeholder="Masukkan alamat lengkap...">{{ old('alamat', $anggota->alamat) }}</textarea>
                                 </div>
                             </div>
                         </div>
@@ -317,26 +339,23 @@
                             <div>
                                 <label class="form-label-custom">Pekerjaan</label>
                                 <input class="form-input-custom" name="pekerjaan" type="text"
-                                    value="{{ old('pekerjaan') }}" placeholder="Jabatan / profesi" />
+                                    value="{{ old('pekerjaan', $anggota->pekerjaan) }}"
+                                    placeholder="Contoh: Pegawai Swasta" />
                             </div>
                             <div>
                                 <label class="form-label-custom">Pendapatan Per Bulan</label>
                                 <div class="tw-relative">
                                     <span
                                         class="tw-absolute tw-left-3 tw-top-2.5 tw-text-text-secondary-light tw-text-sm tw-font-semibold">Rp</span>
-                                    <input class="form-input-custom tw-pl-10" name="pendapatan" type="number"
-                                        value="{{ old('pendapatan') }}" placeholder="0" />
+                                    <input class="form-input-custom tw-pl-10" name="pendapatan" type="number" min="0" step="0.01"
+                                        value="{{ old('pendapatan', $anggota->pendapatan) }}"
+                                        placeholder="0" />
                                 </div>
                             </div>
                             <div class="md:tw-col-span-2">
                                 <label class="form-label-custom">Alamat Kantor</label>
                                 <textarea class="form-input-custom tw-resize-none" name="alamat_kantor"
-                                    rows="2" placeholder="Alamat tempat bekerja (opsional)">{{ old('alamat_kantor') }}</textarea>
-                            </div>
-                            <div class="md:tw-col-span-2">
-                                <label class="form-label-custom">Keterangan Tambahan</label>
-                                <textarea class="form-input-custom tw-resize-none" name="keterangan"
-                                    rows="2" placeholder="Catatan atau informasi tambahan">{{ old('keterangan') }}</textarea>
+                                    rows="2" placeholder="Masukkan alamat kantor...">{{ old('alamat_kantor', $anggota->alamat_kantor) }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -344,15 +363,15 @@
                     {{-- Action Buttons --}}
                     <div
                         class="tw-mt-4 tw-pt-6 tw-border-t tw-border-border-light dark:tw-border-border-dark tw-flex tw-flex-col-reverse md:tw-flex-row tw-justify-end tw-items-center tw-gap-4">
-                        <a href="{{ route('beranda') }}"
+                        <a href="{{ route('profile.show') }}"
                             class="tw-w-full md:tw-w-auto tw-px-6 tw-py-3 tw-rounded-lg tw-border tw-border-border-light dark:tw-border-border-dark tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-font-bold hover:tw-bg-slate-100 dark:hover:tw-bg-slate-800 tw-transition-colors tw-text-center tw-no-underline">
                             Batal
                         </a>
                         <button
                             class="tw-w-full md:tw-w-auto tw-px-8 tw-py-3 tw-rounded-lg tw-bg-primary tw-text-white tw-font-bold tw-shadow-lg tw-shadow-primary/30 hover:tw-bg-blue-600 active:tw-scale-95 tw-transition-all tw-flex tw-items-center tw-justify-center tw-gap-2"
                             type="submit">
-                            <span class="material-symbols-outlined">person_add</span>
-                            Daftar Sebagai Anggota
+                            <span class="material-symbols-outlined">save</span>
+                            Simpan Perubahan
                         </button>
                     </div>
                 </div>

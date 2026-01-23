@@ -15,23 +15,19 @@ class ProfileAnggotaController extends Controller
      */
     public function show()
     {
-        // Ambil data anggota berdasarkan user yang login
         $user = Auth::user();
 
         if (!$user) {
             return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
         }
 
-        // Ambil data anggota berdasarkan user_id yang login
         $anggota = Anggota::with('user')->where('user_id', $user->id)->first();
 
-        // Jika belum ada data anggota, redirect ke create
         if (!$anggota) {
             return redirect()->route('profile.create')
                 ->with('info', 'Silakan lengkapi data anggota Anda terlebih dahulu');
         }
 
-        // Format data untuk view
         $data = [
             'anggota' => $anggota,
             'foto_url' => $anggota->foto_url,
@@ -41,7 +37,6 @@ class ProfileAnggotaController extends Controller
             'pendapatan_formatted' => $anggota->pendapatan ? 'Rp ' . number_format($anggota->pendapatan, 0, ',', '.') : '-',
             'jenis_kelamin_label' => $anggota->jenis_kelamin ?? '-',
             'status_label' => $this->getStatusLabel($anggota),
-            'is_pengurus' => $this->isPengurus($anggota),
         ];
 
         return view('anggota.profile', $data);
@@ -58,7 +53,6 @@ class ProfileAnggotaController extends Controller
             return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
         }
 
-        // Cek apakah sudah ada data anggota
         $existingAnggota = Anggota::where('user_id', $user->id)->first();
 
         if ($existingAnggota) {
@@ -71,7 +65,15 @@ class ProfileAnggotaController extends Controller
             'agama_options' => ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya'],
             'jenis_identitas_options' => ['KTP', 'SIM', 'Paspor'],
             'jenis_kelamin_options' => ['Pria', 'Wanita'],
-            'grup_wilayah_options' => ['Anggota', 'Calon Anggota', 'Pengurus', 'Lainnya'],
+            'grup_wilayah_options' => [
+                'Karyawan Koperasi',
+                'Karyawan PKWT',
+                'Karyawan Tetap',
+                'Non Karyawan',
+                'Outsourcing',
+                'Pensiun',
+                'Petugas Gudang Pengolah'
+            ],
         ];
 
         return view('anggota.createprofile', $data);
@@ -88,7 +90,6 @@ class ProfileAnggotaController extends Controller
             return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
         }
 
-        // Cek apakah sudah ada data anggota
         $existingAnggota = Anggota::where('user_id', $user->id)->first();
 
         if ($existingAnggota) {
@@ -112,7 +113,7 @@ class ProfileAnggotaController extends Controller
             'pekerjaan' => 'nullable|string|max:255',
             'pendapatan' => 'nullable|numeric|min:0',
             'alamat_kantor' => 'nullable|string',
-            'grup_wilayah' => 'nullable|string|max:100',
+            'grup_wilayah' => 'required|in:Karyawan Koperasi,Karyawan PKWT,Karyawan Tetap,Non Karyawan,Outsourcing,Pensiun,Petugas Gudang Pengolah',
             'keterangan' => 'nullable|string',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -120,10 +121,6 @@ class ProfileAnggotaController extends Controller
         // Set data tambahan
         $validated['user_id'] = $user->id;
         $validated['tanggal_daftar'] = now();
-
-        // Generate nomor anggota dan registrasi otomatis
-        $validated['no_anggota'] = $this->generateNoAnggota();
-        $validated['no_registrasi'] = $this->generateNoRegistrasi();
 
         // Handle upload foto
         if ($request->hasFile('foto')) {
@@ -134,11 +131,11 @@ class ProfileAnggotaController extends Controller
             $validated['foto'] = $filename;
         }
 
-        // Buat data anggota baru
+        // Buat data anggota baru (no_anggota dan no_registrasi akan di-generate otomatis oleh model)
         $anggota = Anggota::create($validated);
 
         return redirect()->route('profile.show')
-            ->with('success', 'Data anggota berhasil dibuat! Selamat bergabung.');
+            ->with('success', 'Data anggota berhasil dibuat! Nomor Anggota Anda: ' . $anggota->no_anggota);
     }
 
     /**
@@ -152,7 +149,6 @@ class ProfileAnggotaController extends Controller
             return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
         }
 
-        // Ambil data anggota berdasarkan user_id yang login
         $anggota = Anggota::with('user')->where('user_id', $user->id)->first();
 
         if (!$anggota) {
@@ -166,7 +162,15 @@ class ProfileAnggotaController extends Controller
             'agama_options' => ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya'],
             'jenis_identitas_options' => ['KTP', 'SIM', 'Paspor'],
             'jenis_kelamin_options' => ['Pria', 'Wanita'],
-            'grup_wilayah_options' => ['Anggota', 'Calon Anggota', 'Pengurus', 'Lainnya'],
+            'grup_wilayah_options' => [
+                'Karyawan Koperasi',
+                'Karyawan PKWT',
+                'Karyawan Tetap',
+                'Non Karyawan',
+                'Outsourcing',
+                'Pensiun',
+                'Petugas Gudang Pengolah'
+            ],
         ];
 
         return view('anggota.editprofile', $data);
@@ -183,7 +187,6 @@ class ProfileAnggotaController extends Controller
             return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
         }
 
-        // Ambil data anggota berdasarkan user_id yang login
         $anggota = Anggota::where('user_id', $user->id)->first();
 
         if (!$anggota) {
@@ -207,8 +210,7 @@ class ProfileAnggotaController extends Controller
             'pekerjaan' => 'nullable|string|max:255',
             'pendapatan' => 'nullable|numeric|min:0',
             'alamat_kantor' => 'nullable|string',
-            'grup_wilayah' => 'nullable|string|max:100',
-            'no_anggota' => 'nullable|string|max:50',
+            'grup_wilayah' => 'required|in:Karyawan Koperasi,Karyawan PKWT,Karyawan Tetap,Non Karyawan,Outsourcing,Pensiun,Petugas Gudang Pengolah',
             'keterangan' => 'nullable|string',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -235,77 +237,11 @@ class ProfileAnggotaController extends Controller
     }
 
     /**
-     * Generate nomor anggota otomatis
-     */
-    private function generateNoAnggota()
-    {
-        $prefix = 'AGT';
-        $year = date('Y');
-
-        $lastAnggota = Anggota::where('no_anggota', 'like', "{$prefix}-{$year}-%")
-            ->orderBy('no_anggota', 'desc')
-            ->first();
-
-        if ($lastAnggota) {
-            $lastNumber = (int) substr($lastAnggota->no_anggota, -4);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return sprintf('%s-%s-%04d', $prefix, $year, $nextNumber);
-    }
-
-    /**
-     * Generate nomor registrasi otomatis
-     */
-    private function generateNoRegistrasi()
-    {
-        $prefix = 'REG';
-        $date = date('Ymd');
-
-        $lastReg = Anggota::where('no_registrasi', 'like', "{$prefix}-{$date}-%")
-            ->orderBy('no_registrasi', 'desc')
-            ->first();
-
-        if ($lastReg) {
-            $lastNumber = (int) substr($lastReg->no_registrasi, -4);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
-        return sprintf('%s-%s-%04d', $prefix, $date, $nextNumber);
-    }
-
-    /**
      * Get status label
      */
     private function getStatusLabel($anggota)
     {
-        if ($anggota->grup_wilayah === 'Anggota') {
-            return 'Aktif';
-        } elseif ($anggota->grup_wilayah === 'Calon Anggota') {
-            return 'Calon';
-        }
-
         return 'Aktif';
-    }
-
-    /**
-     * Check if anggota is pengurus
-     */
-    private function isPengurus($anggota)
-    {
-        return $anggota->grup_wilayah === 'Pengurus';
-    }
-
-    /**
-     * Get tahun bergabung
-     */
-    private function getTahunBergabung($anggota)
-    {
-        return $anggota->tanggal_daftar ? $anggota->tanggal_daftar->format('Y') : '-';
     }
 
     public function index()

@@ -132,8 +132,9 @@
                                     <span
                                         class="material-symbols-outlined tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-absolute tw-left-3 tw-top-2.5 tw-text-[20px]">badge</span>
                                     <input class="form-input-custom tw-font-mono tw-pl-10 tw-bg-slate-100 dark:tw-bg-slate-900/50"
-                                        name="no_anggota" type="text" value="{{ old('no_anggota', $anggota->no_anggota) }}" readonly />
+                                        type="text" value="{{ $anggota->no_anggota }}" readonly />
                                 </div>
+                                <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Nomor ini di-generate otomatis</p>
                             </div>
                             <div class="tw-flex tw-flex-col tw-gap-1">
                                 <label class="form-label-custom">No. Registrasi</label>
@@ -141,15 +142,15 @@
                                     <span
                                         class="material-symbols-outlined tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-absolute tw-left-3 tw-top-2.5 tw-text-[20px]">confirmation_number</span>
                                     <input class="form-input-custom tw-font-mono tw-pl-10 tw-bg-slate-100 dark:tw-bg-slate-900/50"
-                                        name="no_registrasi" type="text" value="{{ $anggota->no_registrasi }}" readonly />
+                                        type="text" value="{{ $anggota->no_registrasi }}" readonly />
                                 </div>
                             </div>
                             <div class="tw-flex tw-flex-col tw-gap-1">
-                                <label class="form-label-custom">Grup Wilayah</label>
+                                <label class="form-label-custom">Grup Wilayah <span class="tw-text-red-500">*</span></label>
                                 <div class="tw-relative">
                                     <span
                                         class="material-symbols-outlined tw-text-text-secondary-light dark:tw-text-text-secondary-dark tw-absolute tw-left-3 tw-top-2.5 tw-text-[20px]">groups</span>
-                                    <select class="form-input-custom tw-pl-10" name="grup_wilayah">
+                                    <select class="form-input-custom tw-pl-10" name="grup_wilayah" required>
                                         @foreach($grup_wilayah_options as $option)
                                             <option value="{{ $option }}" {{ old('grup_wilayah', $anggota->grup_wilayah) == $option ? 'selected' : '' }}>
                                                 {{ $option }}
@@ -179,8 +180,9 @@
                             <div>
                                 <label class="form-label-custom">Tanggal Daftar</label>
                                 <input class="form-input-custom tw-bg-slate-100 dark:tw-bg-slate-900/50"
-                                    name="tanggal_daftar" type="date"
-                                    value="{{ old('tanggal_daftar', $anggota->tanggal_daftar?->format('Y-m-d')) }}" readonly />
+                                    type="date"
+                                    value="{{ $anggota->tanggal_daftar?->format('Y-m-d') }}" readonly />
+                                <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Tanggal ini otomatis tersimpan saat pendaftaran</p>
                             </div>
                             <div>
                                 <label class="form-label-custom">Keterangan</label>
@@ -281,8 +283,10 @@
                                 </div>
                                 <div>
                                     <label class="form-label-custom">Berlaku Sampai</label>
-                                    <input class="form-input-custom" name="berlaku_sampai" type="text"
-                                        value="{{ old('berlaku_sampai', $anggota->berlaku_sampai?->format('Y-m-d') ?? 'Seumur Hidup') }}" />
+                                    <input class="form-input-custom" name="berlaku_sampai" type="date"
+                                        value="{{ old('berlaku_sampai', $anggota->berlaku_sampai?->format('Y-m-d')) }}"
+                                        placeholder="Kosongkan jika seumur hidup" />
+                                    <p class="tw-text-xs tw-text-text-secondary-light tw-mt-1">Kosongkan jika identitas berlaku seumur hidup</p>
                                 </div>
                             </div>
                         </div>
@@ -306,13 +310,14 @@
                                         <span
                                             class="material-symbols-outlined tw-text-sm tw-text-text-secondary-light tw-absolute tw-left-3 tw-top-3">call</span>
                                         <input class="form-input-custom tw-pl-9" name="no_telepon" type="tel"
-                                            value="{{ old('no_telepon', $anggota->no_telepon) }}" />
+                                            value="{{ old('no_telepon', $anggota->no_telepon) }}"
+                                            placeholder="08XXXXXXXXXX" />
                                     </div>
                                 </div>
                                 <div>
                                     <label class="form-label-custom">Alamat Rumah</label>
                                     <textarea class="form-input-custom tw-resize-none tw-h-32"
-                                        name="alamat">{{ old('alamat', $anggota->alamat) }}</textarea>
+                                        name="alamat" placeholder="Masukkan alamat lengkap...">{{ old('alamat', $anggota->alamat) }}</textarea>
                                 </div>
                             </div>
                         </div>
@@ -334,21 +339,23 @@
                             <div>
                                 <label class="form-label-custom">Pekerjaan</label>
                                 <input class="form-input-custom" name="pekerjaan" type="text"
-                                    value="{{ old('pekerjaan', $anggota->pekerjaan) }}" />
+                                    value="{{ old('pekerjaan', $anggota->pekerjaan) }}"
+                                    placeholder="Contoh: Pegawai Swasta" />
                             </div>
                             <div>
                                 <label class="form-label-custom">Pendapatan Per Bulan</label>
                                 <div class="tw-relative">
                                     <span
                                         class="tw-absolute tw-left-3 tw-top-2.5 tw-text-text-secondary-light tw-text-sm tw-font-semibold">Rp</span>
-                                    <input class="form-input-custom tw-pl-10" name="pendapatan" type="number"
-                                        value="{{ old('pendapatan', $anggota->pendapatan) }}" />
+                                    <input class="form-input-custom tw-pl-10" name="pendapatan" type="number" min="0" step="0.01"
+                                        value="{{ old('pendapatan', $anggota->pendapatan) }}"
+                                        placeholder="0" />
                                 </div>
                             </div>
                             <div class="md:tw-col-span-2">
                                 <label class="form-label-custom">Alamat Kantor</label>
                                 <textarea class="form-input-custom tw-resize-none" name="alamat_kantor"
-                                    rows="2">{{ old('alamat_kantor', $anggota->alamat_kantor) }}</textarea>
+                                    rows="2" placeholder="Masukkan alamat kantor...">{{ old('alamat_kantor', $anggota->alamat_kantor) }}</textarea>
                             </div>
                         </div>
                     </div>

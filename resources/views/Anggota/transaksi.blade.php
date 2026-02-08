@@ -206,9 +206,6 @@
                                 <th class="tw-px-6 tw-py-3 tw-text-center tw-text-xs tw-font-bold tw-uppercase tw-text-gray-500 dark:tw-text-gray-400 tw-border-r tw-border-gray-200 dark:tw-border-gray-700">
                                     Status
                                 </th>
-                                <th class="tw-px-6 tw-py-3 tw-text-center tw-text-xs tw-font-bold tw-uppercase tw-text-gray-500 dark:tw-text-gray-400">
-                                    Aksi
-                                </th>
                             </tr>
                         </thead>
 
@@ -264,13 +261,6 @@
                                     <span class="tw-inline-flex tw-items-center tw-rounded-full {{ $statusColor }} tw-px-3 tw-py-1 tw-text-xs tw-font-semibold">
                                         {{ $transaksi->status_label }}
                                     </span>
-                                </td>
-                                <td class="tw-px-6 tw-py-4 tw-text-center">
-                                    <a href="{{ route('anggota.transaksi.show', $transaksi->id) }}"
-                                        class="tw-inline-flex tw-items-center tw-gap-1 tw-text-sm tw-font-medium tw-text-primary hover:tw-text-blue-700 tw-border tw-border-transparent hover:tw-border-primary tw-rounded tw-px-2 tw-py-1 tw-transition-all">
-                                        <span class="material-symbols-outlined tw-text-lg">visibility</span>
-                                        Detail
-                                    </a>
                                 </td>
                             </tr>
                             @empty

@@ -35,6 +35,10 @@ class Anggota extends Model
         'pendapatan',
         'alamat_kantor',
         'keterangan',
+        'nama_bank',      
+        'no_rekening',
+        'atas_nama',
+
         'foto',
         'tanggal_daftar',
     ];

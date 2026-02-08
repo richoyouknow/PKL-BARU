@@ -58,13 +58,27 @@
 @push('scripts')
     <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // Format input jumlah pinjaman
+                // Elements
                 const amountInput = document.querySelector('input[name="jumlah_pinjaman"]');
                 const amountDisplay = document.getElementById('amount-display');
                 const tenorButtons = document.querySelectorAll('.tenor-button');
                 const kategoriInputs = document.querySelectorAll('[name="kategori_pinjaman"]');
                 const form = document.querySelector('form[action="{{ route('pinjaman.store') }}"]');
                 const tenorHiddenInput = document.querySelector('input[name="tenor"]');
+                const keteranganBarangTextarea = document.querySelector('textarea[name="keterangan_barang"]');
+                const keteranganOptionalTextarea = document.querySelector('textarea[name="keterangan"]');
+                const termsCheckbox = document.getElementById('terms');
+
+                // Containers untuk conditional display
+                const nominalSection = document.getElementById('nominal-section');
+                const keteranganBarangSection = document.getElementById('keterangan-barang-section');
+                const summarySection = document.getElementById('summary-section');
+                const elektronikSummarySection = document.getElementById('elektronik-summary-section');
+                const infoElektronikSection = document.getElementById('info-elektronik-section');
+
+                // Header elements
+                const headerAmountSection = document.getElementById('header-amount-section');
+                const headerElektronikSection = document.getElementById('header-elektronik-section');
 
                 // Set form ID
                 if (form) {
@@ -76,7 +90,58 @@
                     return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
                 }
 
-                // Function untuk update tenor availability berdasarkan jumlah pinjaman
+                // Function untuk switch antara pinjaman cash dan elektronik
+                function switchKategoriPinjaman(kategori) {
+                    if (kategori === 'pinjaman_cash') {
+                        // Tampilkan section untuk pinjaman cash
+                        nominalSection.classList.remove('tw-hidden');
+                        keteranganBarangSection.classList.add('tw-hidden');
+                        summarySection.classList.remove('tw-hidden');
+                        if (elektronikSummarySection) elektronikSummarySection.classList.add('tw-hidden');
+                        infoElektronikSection.classList.add('tw-hidden');
+
+                        // Header sections
+                        if (headerAmountSection) headerAmountSection.classList.remove('tw-hidden');
+                        if (headerElektronikSection) headerElektronikSection.classList.add('tw-hidden');
+
+                        // Update tenor availability
+                        updateTenorAvailability();
+                        calculateAngsuran();
+
+                    } else if (kategori === 'pinjaman_elektronik') {
+                        // Tampilkan section untuk pinjaman elektronik
+                        nominalSection.classList.add('tw-hidden');
+                        keteranganBarangSection.classList.remove('tw-hidden');
+                        summarySection.classList.add('tw-hidden');
+                        if (elektronikSummarySection) elektronikSummarySection.classList.remove('tw-hidden');
+                        infoElektronikSection.classList.remove('tw-hidden');
+
+                        // Header sections
+                        if (headerAmountSection) headerAmountSection.classList.add('tw-hidden');
+                        if (headerElektronikSection) headerElektronikSection.classList.remove('tw-hidden');
+
+                        // Enable semua tenor untuk elektronik
+                        enableAllTenor();
+                    }
+                }
+
+                // Handle kategori selection
+                kategoriInputs.forEach(input => {
+                    input.addEventListener('change', function() {
+                        switchKategoriPinjaman(this.value);
+                    });
+                });
+
+                // Function untuk enable semua tenor (untuk pinjaman elektronik)
+                function enableAllTenor() {
+                    tenorButtons.forEach(button => {
+                        button.disabled = false;
+                        button.classList.remove('tw-opacity-40', 'tw-cursor-not-allowed');
+                        button.classList.add('hover:tw-border-primary', 'hover:tw-bg-primary/5');
+                    });
+                }
+
+                // Function untuk update tenor availability berdasarkan jumlah pinjaman (untuk pinjaman cash)
                 function updateTenorAvailability() {
                     const amount = amountInput ? parseInt(amountInput.value.replace(/\D/g, '')) || 0 : 0;
                     const currentTenor = parseInt(tenorHiddenInput.value);
@@ -178,16 +243,14 @@
                         tenorHiddenInput.value = this.dataset.tenor;
 
                         // Update display
-                        document.getElementById('tenor-display').textContent = this.dataset.tenor + ' Bulan';
+                        const displayEl = document.getElementById('tenor-display');
+                        if (displayEl) displayEl.textContent = this.dataset.tenor + ' Bulan';
 
-                        calculateAngsuran();
-                    });
-                });
-
-                // Handle kategori selection
-                kategoriInputs.forEach(input => {
-                    input.addEventListener('change', function() {
-                        calculateAngsuran();
+                        // Calculate angsuran hanya untuk cash
+                        const kategoriSelected = document.querySelector('input[name="kategori_pinjaman"]:checked').value;
+                        if (kategoriSelected === 'pinjaman_cash') {
+                            calculateAngsuran();
+                        }
                     });
                 });
 
@@ -228,36 +291,54 @@
                 const submitBtn = document.querySelector('button[type="submit"]');
                 if (submitBtn) {
                     submitBtn.addEventListener('click', function(e) {
-                        const limitTersedia = {{ $limit_tersedia ?? 0 }};
-                        if (limitTersedia <= 0) {
-                            e.preventDefault();
-                            alert('Limit pinjaman Anda telah penuh. Tidak dapat mengajukan pinjaman baru.');
-                            return false;
-                        }
+                        const kategoriSelected = document.querySelector('input[name="kategori_pinjaman"]:checked').value;
 
-                        // Validasi tenor berdasarkan jumlah pinjaman
-                        const amount = parseInt(amountInput.value.replace(/\D/g, '')) || 0;
-                        const tenor = parseInt(tenorHiddenInput.value);
+                        if (kategoriSelected === 'pinjaman_cash') {
+                            const limitTersedia = {{ $limit_tersedia ?? 0 }};
+                            if (limitTersedia <= 0) {
+                                e.preventDefault();
+                                alert('Limit pinjaman Anda telah penuh. Tidak dapat mengajukan pinjaman baru.');
+                                return false;
+                            }
 
-                        if (amount < 10000000 && tenor > 12) {
-                            e.preventDefault();
-                            alert('Untuk pinjaman di bawah Rp 10.000.000, tenor maksimal adalah 12 bulan.');
-                            return false;
-                        }
+                            // Validasi tenor berdasarkan jumlah pinjaman
+                            const amount = parseInt(amountInput.value.replace(/\D/g, '')) || 0;
+                            const tenor = parseInt(tenorHiddenInput.value);
 
-                        // Validasi checkbox terms (jika ada)
-                        const termsCheckbox = document.getElementById('terms');
-                        if (termsCheckbox && !termsCheckbox.checked) {
-                            e.preventDefault();
-                            alert('Anda harus menyetujui syarat dan ketentuan terlebih dahulu.');
-                            return false;
+                            if (amount < 10000000 && tenor > 12) {
+                                e.preventDefault();
+                                alert('Untuk pinjaman di bawah Rp 10.000.000, tenor maksimal adalah 12 bulan.');
+                                return false;
+                            }
+                        } else if (kategoriSelected === 'pinjaman_elektronik') {
+                            // Validasi keterangan barang
+                            if (!keteranganBarangTextarea.value.trim() || keteranganBarangTextarea.value.trim().length < 10) {
+                                e.preventDefault();
+                                alert('Harap isi keterangan barang elektronik minimal 10 karakter.');
+                                keteranganBarangTextarea.focus();
+                                return false;
+                            }
+
+                            // Validasi tenor
+                            if (!tenorHiddenInput.value) {
+                                e.preventDefault();
+                                alert('Harap pilih tenor pinjaman.');
+                                return false;
+                            }
+
+                            // Validasi checkbox terms
+                            if (termsCheckbox && !termsCheckbox.checked) {
+                                e.preventDefault();
+                                alert('Anda harus menyetujui syarat dan ketentuan terlebih dahulu.');
+                                return false;
+                            }
                         }
                     });
                 }
 
-                // Initial calculation and tenor setup
-                updateTenorAvailability();
-                calculateAngsuran();
+                // Initial setup
+                const initialKategori = document.querySelector('input[name="kategori_pinjaman"]:checked').value;
+                switchKategoriPinjaman(initialKategori);
             });
     </script>
 @endpush
@@ -302,16 +383,33 @@
             </div>
         @endif
 
+        @if(session('success'))
+            <div class="tw-col-span-1 lg:tw-col-span-12">
+                <div class="tw-rounded-lg tw-bg-green-50 dark:tw-bg-green-900/30 tw-p-4 tw-border tw-border-green-200 dark:tw-border-green-800">
+                    <div class="tw-flex tw-items-center">
+                        <div class="tw-flex-shrink-0">
+                            <span class="material-symbols-outlined tw-text-green-400">check_circle</span>
+                        </div>
+                        <div class="tw-ml-3">
+                            <p class="tw-text-sm tw-font-medium tw-text-green-800 dark:tw-text-green-300">{{ session('success') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <form action="{{ route('pinjaman.store') }}" method="POST" class="tw-col-span-1 lg:tw-col-span-8 tw-flex tw-flex-col tw-gap-6 lg:tw-gap-8">
             @csrf
             <div
                 class="tw-bg-white dark:tw-bg-[#1a2e22] tw-rounded-2xl tw-shadow-sm tw-border tw-border-[#e5e7eb] dark:tw-border-[#2a4032] tw-overflow-hidden">
                 <div
                     class="tw-p-6 md:tw-p-8 tw-border-b tw-border-[#f0f2f5] dark:tw-border-[#2a4032] tw-bg-[#fcfdfd] dark:tw-bg-[#1a2e22] tw-flex tw-flex-col sm:tw-flex-row tw-items-start sm:tw-items-center tw-justify-between tw-gap-6 sm:tw-gap-0">
-                    <div class="tw-flex tw-flex-col tw-gap-2">
+
+                    {{-- Header untuk Pinjaman Cash --}}
+                    <div id="header-amount-section" class="tw-flex tw-flex-col tw-gap-2">
                         <div class="tw-flex tw-items-center tw-gap-2 tw-text-[#618971] dark:tw-text-[#8abfa0]">
                             <span class="material-symbols-outlined tw-text-2xl">account_balance_wallet</span>
-                            <span class="tw-text-sm tw-font-bold tw-uppercase tw-tracking-wide">Jumlah Pinjaman</span>
+                            <span class="tw-text-sm tw-font-bold tw-uppercase tw-tracking-wide">Pengajuan Pinjaman Cash</span>
                         </div>
                         <div class="tw-flex tw-items-baseline tw-gap-3 tw-flex-wrap">
                             <h2
@@ -329,12 +427,31 @@
                             @endif
                         </p>
                     </div>
+
+                    {{-- Header untuk Pinjaman Elektronik --}}
+                    <div id="header-elektronik-section" class="tw-hidden tw-flex tw-flex-col tw-gap-2">
+                        <div class="tw-flex tw-items-center tw-gap-2 tw-text-blue-600 dark:tw-text-blue-400">
+                            <span class="material-symbols-outlined tw-text-2xl">devices</span>
+                            <span class="tw-text-sm tw-font-bold tw-uppercase tw-tracking-wide">Pengajuan Pinjaman Elektronik</span>
+                        </div>
+                        <div class="tw-flex tw-items-baseline tw-gap-3 tw-flex-wrap">
+                            <h2 class="tw-text-[#111814] dark:tw-text-white tw-text-3xl lg:tw-text-4xl tw-font-bold tw-leading-tight">
+                                Verifikasi Diperlukan
+                            </h2>
+                            <span class="tw-px-2.5 tw-py-1 tw-rounded tw-text-xs tw-font-bold tw-bg-yellow-100 dark:tw-bg-yellow-900/30 tw-text-yellow-800 dark:tw-text-yellow-400 tw-tracking-wide">PENDING</span>
+                        </div>
+                        <p class="tw-text-sm tw-text-[#618971] dark:tw-text-[#8abfa0]">
+                            Nominal pinjaman akan ditentukan setelah verifikasi barang di koperasi
+                        </p>
+                    </div>
+
                     <div
                         class="tw-h-16 tw-w-16 tw-rounded-full tw-bg-primary/10 tw-flex tw-items-center tw-justify-center tw-text-primary tw-shadow-inner tw-self-end sm:tw-self-center">
                         <span class="material-symbols-outlined tw-text-3xl">trending_up</span>
                     </div>
                 </div>
                 <div class="tw-p-6 md:tw-p-8 tw-flex tw-flex-col tw-gap-8 md:tw-gap-10">
+                    {{-- STEP 1: Pilih Kategori --}}
                     <div class="tw-flex tw-flex-col tw-gap-4">
                         <span
                             class="tw-text-[#111814] dark:tw-text-white tw-text-lg tw-font-bold tw-flex tw-items-center tw-gap-2">
@@ -382,7 +499,9 @@
                             <p class="tw-text-red-500 tw-text-sm tw-mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="tw-flex tw-flex-col tw-gap-4">
+
+                    {{-- STEP 2A: Nominal Pinjaman (untuk Pinjaman Cash) --}}
+                    <div id="nominal-section" class="tw-flex tw-flex-col tw-gap-4">
                         <span
                             class="tw-text-[#111814] dark:tw-text-white tw-text-lg tw-font-bold tw-flex tw-items-center tw-gap-2">
                             <span
@@ -401,8 +520,7 @@
                                 min="500000"
                                 max="{{ $limit_tersedia > 0 ? $limit_tersedia : $limit_maksimal }}"
                                 step="100000"
-                                value="{{ old('jumlah_pinjaman', 5000000) }}"
-                                required />
+                                value="{{ old('jumlah_pinjaman', 5000000) }}" />
                             <div
                                 class="tw-flex tw-flex-col xs:tw-flex-row tw-justify-between tw-mt-2 tw-px-1 tw-gap-1 xs:tw-gap-0">
                                 <span
@@ -433,6 +551,55 @@
                         </div>
                         @endif
                     </div>
+
+                    {{-- STEP 2B: Keterangan Barang (untuk Pinjaman Elektronik) --}}
+                    <div id="keterangan-barang-section" class="tw-flex tw-flex-col tw-gap-4 tw-hidden">
+                        <span
+                            class="tw-text-[#111814] dark:tw-text-white tw-text-lg tw-font-bold tw-flex tw-items-center tw-gap-2">
+                            <span
+                                class="tw-flex tw-items-center tw-justify-center tw-w-6 tw-h-6 tw-rounded-full tw-bg-[#111814] tw-text-white tw-text-xs">2</span>
+                            Barang Elektronik yang Ingin Dipinjam
+                        </span>
+                        <div class="tw-flex tw-flex-col tw-gap-2">
+                            <textarea
+                                name="keterangan_barang"
+                                id="keterangan_barang"
+                                class="tw-form-textarea tw-w-full tw-rounded-xl tw-border-2 tw-border-[#dbe6df] dark:tw-border-[#4a6356] tw-bg-white dark:tw-bg-[#14261d] focus:tw-ring-2 focus:tw-ring-primary/50 focus:tw-border-primary tw-p-4 tw-text-sm"
+                                rows="5"
+                                placeholder="Contoh:&#10;- Laptop Asus A416 RAM 8GB SSD 256GB&#10;- TV Samsung 43 inch Smart TV&#10;- Kulkas Sharp 2 pintu&#10;- HP Samsung Galaxy A54">{{ old('keterangan_barang') }}</textarea>
+                            <div class="tw-flex tw-items-start tw-gap-2 tw-mt-2">
+                                <span class="material-symbols-outlined tw-text-primary tw-text-lg tw-mt-0.5">info</span>
+                                <p class="tw-text-xs tw-text-[#618971] dark:tw-text-[#8abfa0] tw-leading-relaxed">
+                                    Tuliskan detail barang elektronik yang ingin Anda pinjam (merk, tipe, spesifikasi).
+                                    Semakin detail informasi yang Anda berikan, akan semakin memudahkan proses verifikasi di koperasi.
+                                </p>
+                            </div>
+                        </div>
+                        @error('keterangan_barang')
+                            <p class="tw-text-red-500 tw-text-sm tw-mt-1">{{ $message }}</p>
+                        @enderror
+
+                        <!-- Info Box untuk Elektronik -->
+                        <div class="tw-bg-blue-50 dark:tw-bg-blue-900/20 tw-rounded-xl tw-p-4 tw-border tw-border-blue-200 dark:tw-border-blue-800 tw-mt-2">
+                            <div class="tw-flex tw-items-start tw-gap-3">
+                                <span class="material-symbols-outlined tw-text-blue-600 dark:tw-text-blue-400 tw-text-xl">store</span>
+                                <div class="tw-flex tw-flex-col tw-gap-1">
+                                    <p class="tw-text-sm tw-font-bold tw-text-blue-900 dark:tw-text-blue-300">
+                                        Proses Pengajuan Elektronik
+                                    </p>
+                                    <p class="tw-text-xs tw-text-blue-700 dark:tw-text-blue-400">
+                                        1. Isi detail barang yang diinginkan<br>
+                                        2. Ajukan pengajuan online<br>
+                                        3. Datang ke koperasi untuk verifikasi barang<br>
+                                        4. Admin akan menentukan nominal pinjaman<br>
+                                        5. Ambil barang setelah disetujui
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- STEP 3: Pilih Tenor --}}
                     <div class="tw-flex tw-flex-col tw-gap-4">
                         <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2">
                             <span
@@ -466,22 +633,52 @@
                             <p class="tw-text-red-500 tw-text-sm tw-mt-1">{{ $message }}</p>
                         @enderror
 
-                        <div class="tw-flex tw-flex-col tw-gap-2">
-                            <label class="tw-text-[#111814] dark:tw-text-white tw-text-sm tw-font-bold tw-flex tw-items-center tw-gap-2">
-                                <span class="material-symbols-outlined tw-text-base">notes</span>
-                                Keterangan (Opsional)
-                            </label>
-                            <textarea
-                                name="keterangan"
-                                class="tw-form-textarea tw-w-full tw-rounded-xl tw-border tw-border-[#dbe6df] dark:tw-border-[#4a6356] tw-bg-white dark:tw-bg-[#14261d] focus:tw-ring-2 focus:tw-ring-primary/50 focus:tw-border-primary tw-p-4 tw-text-sm"
-                                rows="3"
-                                placeholder="Contoh: Untuk biaya pendidikan anak..."
-                                maxlength="1000">{{ old('keterangan') }}</textarea>
-                            <p class="tw-text-xs tw-text-[#618971] dark:tw-text-[#8abfa0]">
-                                Berikan alasan atau keterangan penggunaan pinjaman (maksimal 1000 karakter)
+                        <div class="tw-flex tw-items-start tw-gap-2 tw-mt-2">
+                            <span class="material-symbols-outlined tw-text-primary tw-text-lg tw-mt-0.5">schedule</span>
+                            <p class="tw-text-xs tw-text-[#618971] dark:tw-text-[#8abfa0] tw-leading-relaxed">
+                                Pilih jangka waktu cicilan yang sesuai dengan kemampuan Anda.
                             </p>
                         </div>
-                        @error('keterangan')
+                    </div>
+
+                    {{-- STEP 4: Keterangan (Optional untuk semua) --}}
+                    <div class="tw-flex tw-flex-col tw-gap-2">
+                        <label class="tw-text-[#111814] dark:tw-text-white tw-text-sm tw-font-bold tw-flex tw-items-center tw-gap-2">
+                            <span class="material-symbols-outlined tw-text-base">notes</span>
+                            Keterangan Tambahan (Opsional)
+                        </label>
+                        <textarea
+                            name="keterangan"
+                            class="tw-form-textarea tw-w-full tw-rounded-xl tw-border tw-border-[#dbe6df] dark:tw-border-[#4a6356] tw-bg-white dark:tw-bg-[#14261d] focus:tw-ring-2 focus:tw-ring-primary/50 focus:tw-border-primary tw-p-4 tw-text-sm"
+                            rows="3"
+                            placeholder="Contoh: Untuk membeli laptop kerja..."
+                            maxlength="1000">{{ old('keterangan') }}</textarea>
+                        <p class="tw-text-xs tw-text-[#618971] dark:tw-text-[#8abfa0]">
+                            Berikan alasan atau keterangan penggunaan pinjaman (maksimal 1000 karakter)
+                        </p>
+                    </div>
+                    @error('keterangan')
+                        <p class="tw-text-red-500 tw-text-sm tw-mt-1">{{ $message }}</p>
+                        @enderror
+
+                    {{-- Syarat dan Ketentuan untuk Elektronik --}}
+                    <div id="info-elektronik-section" class="tw-flex tw-flex-col tw-gap-4 tw-border-t tw-border-[#f0f2f5] dark:tw-border-[#2a4032] tw-pt-6 tw-hidden">
+                        <label class="tw-flex tw-items-start tw-gap-3 tw-cursor-pointer tw-group">
+                            <input
+                                type="checkbox"
+                                id="terms"
+                                name="terms"
+                                class="tw-mt-1 tw-rounded tw-border-2 tw-border-[#dbe6df] dark:tw-border-[#4a6356] tw-text-primary focus:tw-ring-primary focus:tw-ring-offset-0">
+                            <div class="tw-flex tw-flex-col tw-gap-1">
+                                <span class="tw-text-sm tw-font-semibold tw-text-[#111814] dark:tw-text-white group-hover:tw-text-primary tw-transition-colors">
+                                    Saya menyetujui syarat dan ketentuan pinjaman elektronik
+                                </span>
+                                <p class="tw-text-xs tw-text-[#618971] dark:tw-text-[#8abfa0] tw-leading-relaxed">
+                                    Dengan mencentang kotak ini, saya menyatakan bahwa informasi yang saya berikan adalah benar dan saya bersedia untuk datang ke kantor koperasi untuk verifikasi barang elektronik dan penentuan nominal pinjaman.
+                                </p>
+                            </div>
+                        </label>
+                        @error('terms')
                             <p class="tw-text-red-500 tw-text-sm tw-mt-1">{{ $message }}</p>
                         @enderror
                     </div>
@@ -489,13 +686,15 @@
             </div>
         </form>
 
+        {{-- SIDEBAR: Summary dan Tombol Ajukan --}}
         <div class="tw-col-span-1 lg:tw-col-span-4 tw-flex tw-flex-col tw-gap-6">
-            <div
+            {{-- Summary untuk Pinjaman Cash --}}
+            <div id="summary-section"
                 class="tw-bg-white dark:tw-bg-[#1a2e22] tw-rounded-2xl tw-shadow-lg tw-border tw-border-[#e5e7eb] dark:tw-border-[#2a4032] tw-p-6 md:tw-p-8 tw-sticky tw-top-8">
                 <h3
                     class="tw-text-lg md:tw-text-xl tw-font-bold tw-text-[#111814] dark:tw-text-white tw-mb-6 tw-flex tw-items-center tw-gap-2">
                     <span class="material-symbols-outlined tw-text-primary">receipt_long</span>
-                    Ringkasan Pengajuan
+                    Ringkasan Pengajuan Cash
                 </h3>
                 <div class="tw-space-y-4 tw-mb-8">
                     <div
@@ -530,13 +729,15 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- Tombol Ajukan untuk Cash --}}
                 <button
                     type="submit"
                     form="pinjaman-form"
-                    class="tw-flex tw-w-full tw-items-center tw-justify-center tw-gap-3 tw-rounded-xl tw-bg-primary tw-h-12 md:tw-h-14 hover:tw-bg-[#25d366] active:tw-scale-[0.99] tw-transition-all tw-duration-200 tw-shadow-xl tw-shadow-primary/25 tw-group {{ $limit_tersedia <= 0 ? 'tw-opacity-50 tw-cursor-not-allowed' : '' }}"
-                    {{ $limit_tersedia <= 0 ? 'disabled' : '' }}>
+                    class="tw-flex tw-w-full tw-items-center tw-justify-center tw-gap-3 tw-rounded-xl tw-bg-primary tw-h-12 md:tw-h-14 hover:tw-bg-[#25d366] active:tw-scale-[0.99] tw-transition-all tw-duration-200 tw-shadow-xl tw-shadow-primary/25 tw-group"
+                    onclick="return validatePinjamanCash()">
                     <span class="tw-text-[#102217] tw-text-base md:tw-text-lg tw-font-bold tw-tracking-tight">
-                        {{ $limit_tersedia > 0 ? 'Ajukan Sekarang' : 'Limit Penuh' }}
+                        Ajukan Pinjaman Cash
                     </span>
                     <span
                         class="material-symbols-outlined tw-text-[#102217] tw-text-xl md:tw-text-2xl group-hover:tw-translate-x-1 tw-transition-transform">arrow_forward</span>
@@ -554,9 +755,135 @@
                 </div>
                 @endif
             </div>
+
+            {{-- Summary/Info untuk Pinjaman Elektronik --}}
+            <div id="elektronik-summary-section"
+                class="tw-hidden tw-bg-white dark:tw-bg-[#1a2e22] tw-rounded-2xl tw-shadow-lg tw-border tw-border-[#e5e7eb] dark:tw-border-[#2a4032] tw-p-6 md:tw-p-8 tw-sticky tw-top-8">
+                <h3
+                    class="tw-text-lg md:tw-text-xl tw-font-bold tw-text-[#111814] dark:tw-text-white tw-mb-6 tw-flex tw-items-center tw-gap-2">
+                    <span class="material-symbols-outlined tw-text-blue-600">devices</span>
+                    Pinjaman Elektronik
+                </h3>
+
+                <div class="tw-space-y-4 tw-mb-8">
+                    <div class="tw-bg-blue-50 dark:tw-bg-blue-900/20 tw-rounded-xl tw-p-4 tw-border tw-border-blue-200 dark:tw-border-blue-800">
+                        <div class="tw-flex tw-items-start tw-gap-3">
+                            <span class="material-symbols-outlined tw-text-blue-600 dark:tw-text-blue-400 tw-text-xl">info</span>
+                            <div class="tw-flex tw-flex-col tw-gap-2">
+                                <p class="tw-text-sm tw-font-bold tw-text-blue-900 dark:tw-text-blue-300">
+                                    Informasi Penting
+                                </p>
+                                <ul class="tw-text-xs tw-text-blue-700 dark:tw-text-blue-400 tw-space-y-1.5">
+                                    <li class="tw-flex tw-items-start tw-gap-2">
+                                        <span class="tw-mt-0.5">•</span>
+                                        <span>Nominal pinjaman ditentukan setelah verifikasi barang</span>
+                                    </li>
+                                    <li class="tw-flex tw-items-start tw-gap-2">
+                                        <span class="tw-mt-0.5">•</span>
+                                        <span>Anda harus datang ke koperasi untuk verifikasi</span>
+                                    </li>
+                                    <li class="tw-flex tw-items-start tw-gap-2">
+                                        <span class="tw-mt-0.5">•</span>
+                                        <span>Barang dapat diambil setelah pinjaman disetujui</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tw-space-y-3">
+                        <div class="tw-flex tw-items-center tw-justify-between tw-pb-3 tw-border-b tw-border-[#f0f2f5] dark:tw-border-[#2a4032]">
+                            <span class="tw-text-sm tw-text-[#618971] dark:tw-text-[#8abfa0]">Kategori</span>
+                            <span class="tw-text-base tw-font-semibold tw-text-[#111814] dark:tw-text-white">Pinjaman Elektronik</span>
+                        </div>
+                        <div class="tw-flex tw-items-center tw-justify-between tw-pb-3 tw-border-b tw-border-[#f0f2f5] dark:tw-border-[#2a4032]">
+                            <span class="tw-text-sm tw-text-[#618971] dark:tw-text-[#8abfa0]">Status</span>
+                            <span class="tw-px-2.5 tw-py-1 tw-rounded tw-text-xs tw-font-bold tw-bg-yellow-100 dark:tw-bg-yellow-900/30 tw-text-yellow-800 dark:tw-text-yellow-400">Menunggu Verifikasi</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Tombol Ajukan untuk Elektronik --}}
+                <button
+                    type="submit"
+                    form="pinjaman-form"
+                    class="tw-flex tw-w-full tw-items-center tw-justify-center tw-gap-3 tw-rounded-xl tw-bg-primary tw-h-12 md:tw-h-14 hover:tw-bg-[#25d366] active:tw-scale-[0.99] tw-transition-all tw-duration-200 tw-shadow-xl tw-shadow-primary/25 tw-group"
+                    onclick="return validatePinjamanElektronik()">
+                    <span class="tw-text-[#102217] tw-text-base md:tw-text-lg tw-font-bold tw-tracking-tight">
+                        Ajukan Pinjaman Elektronik
+                    </span>
+                    <span
+                        class="material-symbols-outlined tw-text-[#102217] tw-text-xl md:tw-text-2xl group-hover:tw-translate-x-1 tw-transition-transform">arrow_forward</span>
+                </button>
+            </div>
+
             <p class="tw-text-center tw-text-sm tw-text-[#9ca3af] dark:tw-text-[#4a6356]">
                 © {{ date('Y') }} Koperasi Simpan Pinjam Sejahtera.<br />Terdaftar dan diawasi.
             </p>
         </div>
     </div>
+
+    <script>
+        // Function untuk validate pinjaman cash
+        function validatePinjamanCash() {
+            const kategoriSelected = document.querySelector('input[name="kategori_pinjaman"]:checked').value;
+
+            if (kategoriSelected !== 'pinjaman_cash') {
+                return true; // Let the elektronik validation handle it
+            }
+
+            const limitTersedia = {{ $limit_tersedia ?? 0 }};
+            if (limitTersedia <= 0) {
+                alert('Limit pinjaman Anda telah penuh. Tidak dapat mengajukan pinjaman baru.');
+                return false;
+            }
+
+            const amountInput = document.querySelector('input[name="jumlah_pinjaman"]');
+            const amount = parseInt(amountInput.value.replace(/\D/g, '')) || 0;
+            const tenorHiddenInput = document.querySelector('input[name="tenor"]');
+            const tenor = parseInt(tenorHiddenInput.value);
+
+            if (amount < 10000000 && tenor > 12) {
+                alert('Untuk pinjaman di bawah Rp 10.000.000, tenor maksimal adalah 12 bulan.');
+                return false;
+            }
+
+            if (amount < 500000) {
+                alert('Jumlah pinjaman minimal Rp 500.000.');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Function untuk validate pinjaman elektronik
+        function validatePinjamanElektronik() {
+            const kategoriSelected = document.querySelector('input[name="kategori_pinjaman"]:checked').value;
+
+            if (kategoriSelected !== 'pinjaman_elektronik') {
+                return true; // Let the cash validation handle it
+            }
+
+            const keteranganBarangTextarea = document.querySelector('textarea[name="keterangan_barang"]');
+            if (!keteranganBarangTextarea.value.trim() || keteranganBarangTextarea.value.trim().length < 10) {
+                alert('Harap isi keterangan barang elektronik minimal 10 karakter.');
+                keteranganBarangTextarea.focus();
+                return false;
+            }
+
+            const tenorHiddenInput = document.querySelector('input[name="tenor"]');
+            if (!tenorHiddenInput.value) {
+                alert('Harap pilih tenor pinjaman.');
+                return false;
+            }
+
+            const termsCheckbox = document.getElementById('terms');
+            if (termsCheckbox && !termsCheckbox.checked) {
+                alert('Anda harus menyetujui syarat dan ketentuan terlebih dahulu.');
+                return false;
+            }
+
+            return true;
+        }
+    </script>
 @endsection

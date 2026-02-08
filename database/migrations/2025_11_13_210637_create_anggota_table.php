@@ -18,7 +18,6 @@ return new class extends Migration {
             $table->string('no_registrasi', 30)->unique();
             $table->string('no_anggota', 30)->unique()->nullable();
 
-
             $table->string('nama', 100);
             $table->text('alamat')->nullable();
             $table->string('no_telepon', 20)->nullable();
@@ -49,18 +48,24 @@ return new class extends Migration {
             $table->text('alamat_kantor')->nullable();
             $table->text('keterangan')->nullable();
 
+            // Field baru untuk rekening bank
+            $table->string('nama_bank', 50)->nullable()->comment('Nama bank anggota');
+            $table->string('no_rekening', 30)->nullable()->comment('Nomor rekening bank anggota');
+            $table->string('atas_nama', 100)->nullable()->comment('Nama pemilik rekening');
+
             $table->string('foto')->nullable();
             $table->date('tanggal_daftar')->nullable();
 
             $table->timestamps();
             $table->softDeletes();
 
+            // Index untuk performa
+            $table->index('no_rekening');
         });
     }
 
     public function down(): void
     {
         Schema::dropIfExists('anggotas');
-
     }
 };

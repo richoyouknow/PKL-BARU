@@ -46,14 +46,6 @@
 
             <!-- Slider Container -->
             <div class="position-relative">
-                <!-- Custom Navigation Buttons -->
-                <button class="btn-slider btn-slider-prev">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <button class="btn-slider btn-slider-next">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-
                 <!-- Progress Bar -->
                 <div class="slider-progress-container mb-4">
                     <div class="slider-progress-bar" id="sliderProgressBar"></div>

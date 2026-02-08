@@ -16,7 +16,6 @@ class Simpanan extends Model
     protected $fillable = [
         'anggota_id',
         'no_simpanan',
-        'no_rekening',
         'jenis_simpanan',
         'saldo',
         'status'
@@ -89,6 +88,43 @@ class Simpanan extends Model
     }
 
     /**
+     * Get nomor rekening dari anggota (accessor)
+     * Mengambil no_rekening dari tabel anggotas
+     */
+    public function getNoRekeningAttribute(): ?string
+    {
+        return $this->anggota?->no_rekening;
+    }
+
+    /**
+     * Get nama bank dari anggota (accessor)
+     */
+    public function getNamaBankAttribute(): ?string
+    {
+        return $this->anggota?->nama_bank;
+    }
+
+    /**
+     * Get atas nama rekening dari anggota (accessor)
+     */
+    public function getAtasNamaAttribute(): ?string
+    {
+        return $this->anggota?->atas_nama;
+    }
+
+    /**
+     * Get informasi rekening lengkap (accessor)
+     * Format: "BCA - 1234567890 a.n John Doe"
+     */
+    public function getInfoRekeningAttribute(): string
+    {
+        if ($this->anggota && $this->anggota->no_rekening) {
+            return "{$this->anggota->nama_bank} - {$this->anggota->no_rekening} a.n {$this->anggota->atas_nama}";
+        }
+        return 'Rekening belum terdaftar';
+    }
+
+    /**
      * Relationship dengan anggota
      */
     public function anggota(): BelongsTo
@@ -153,6 +189,16 @@ class Simpanan extends Model
     }
 
     /**
+     * Cek apakah anggota memiliki rekening bank terdaftar
+     */
+    public function hasRekening(): bool
+    {
+        return $this->anggota
+            && !empty($this->anggota->no_rekening)
+            && !empty($this->anggota->nama_bank);
+    }
+
+    /**
      * Cek apakah ada pengajuan penarikan yang menunggu
      */
     public function hasPendingWithdrawal(): bool
@@ -173,19 +219,17 @@ class Simpanan extends Model
     }
 
     /**
-     * Boot method untuk auto-generate nomor simpanan dan rekening
+     * Boot method untuk auto-generate nomor simpanan
+     * No rekening tidak perlu di-generate lagi karena diambil dari tabel anggotas
      */
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($simpanan) {
+            // Hanya generate nomor simpanan
             if (empty($simpanan->no_simpanan)) {
                 $simpanan->no_simpanan = static::generateNoSimpanan($simpanan->jenis_simpanan);
-            }
-
-            if (empty($simpanan->no_rekening)) {
-                $simpanan->no_rekening = static::generateNoRekening($simpanan->jenis_simpanan);
             }
         });
     }
@@ -226,38 +270,6 @@ class Simpanan extends Model
         }
 
         // Format: Simp-[JENIS]-YYYYMMDD-XXXX
-        return sprintf('%s-%s-%04d', $prefix, $date, $nextNumber);
-    }
-
-    /**
-     * Generate nomor rekening otomatis berdasarkan jenis simpanan
-     * Format: [PREFIX]-YYYYMMDD-XXXX
-     * Contoh: SP-20251230-0001, SW-20251230-0002
-     */
-    public static function generateNoRekening(string $jenis): string
-    {
-        $prefix = match($jenis) {
-            self::JENIS_POKOK => 'SP',
-            self::JENIS_WAJIB => 'SW',
-            self::JENIS_SUKARELA => 'SS',
-            self::JENIS_BERJANGKA => 'SB',
-            default => 'S'
-        };
-
-        $date = now()->format('Ymd');
-
-        // Cari nomor rekening terakhir dengan prefix dan tanggal yang sama
-        $last = self::where('no_rekening', 'like', "{$prefix}-{$date}-%")
-            ->orderBy('no_rekening', 'desc')
-            ->first();
-
-        if ($last) {
-            $lastNumber = (int) substr($last->no_rekening, -4);
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
-
         return sprintf('%s-%s-%04d', $prefix, $date, $nextNumber);
     }
 }

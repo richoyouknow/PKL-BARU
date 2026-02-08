@@ -38,10 +38,18 @@ Route::middleware(['auth'])->group(function () {
         // Detail pinjaman
         Route::get('/{id}', [PinjamanController::class, 'show'])->name('show');
 
+
         // AJAX: Calculate angsuran untuk preview
         Route::post('/calculate-angsuran', [PinjamanController::class, 'calculateAngsuran'])->name('calculate');
+
     });
 });
+
+        Route::get('/pinjaman/elektronik/create', [PinjamanController::class, 'createElektronik'])
+        ->name('pinjaman.elektronik.create');
+
+        Route::post('/pinjaman/elektronik/store', [PinjamanController::class, 'storeElektronik'])
+        ->name('pinjaman.store-elektronik');
 
 
 Route::prefix('simpanan')->name('simpanan.')->group(function () {

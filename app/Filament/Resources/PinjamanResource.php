@@ -63,28 +63,67 @@ class PinjamanResource extends Resource
                                 'pinjaman_cash' => 'Pinjaman Cash',
                                 'pinjaman_elektronik' => 'Pinjaman Elektronik',
                             ])
-                            ->default('')
+                            ->default('pinjaman_cash')
                             ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                // Reset fields when kategori changes
+                                if ($state === 'pinjaman_elektronik') {
+                                    $set('jumlah_pinjaman', 0);
+                                    $set('total_pinjaman_dengan_bunga', 0);
+                                    $set('saldo_pinjaman', 0);
+                                    $set('angsuran_per_bulan', 0);
+                                    $set('tanggal_pinjaman', null);
+                                    $set('tanggal_jatuh_tempo', null);
+                                }
+                            })
                             ->native(false),
 
                         Forms\Components\TextInput::make('jumlah_pinjaman')
                             ->label('Jumlah Pinjaman (Pokok)')
                             ->numeric()
                             ->prefix('Rp')
-                            ->required()
+                            ->required(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash')
+                            ->disabled(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_elektronik')
+                            ->dehydrated()
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                if ($get('kategori_pinjaman') === 'pinjaman_elektronik') {
+                                    return; // Skip calculation for elektronik
+                                }
+
                                 $set('bunga_per_tahun', 1.5);
                                 $set('tenor', null);
                                 $set('total_pinjaman_dengan_bunga', null);
                                 $set('saldo_pinjaman', null);
                                 $set('angsuran_per_bulan', null);
                             })
-                            ->helperText('Pinjaman < Rp 10.000.000 hanya bisa tenor 3, 6, 9, 12 bulan'),
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Nominal akan diisi setelah verifikasi barang di koperasi'
+                                    : 'Pinjaman < Rp 10.000.000 hanya bisa tenor 3, 6, 9, 12 bulan'
+                            ),
 
                         Forms\Components\Select::make('tenor')
                             ->label('Tenor (Bulan)')
                             ->options(function (Get $get) {
+                                $kategori = $get('kategori_pinjaman');
+
+                                // Untuk elektronik, semua tenor tersedia
+                                if ($kategori === 'pinjaman_elektronik') {
+                                    return [
+                                        3 => '3 Bulan',
+                                        6 => '6 Bulan',
+                                        9 => '9 Bulan',
+                                        12 => '12 Bulan',
+                                        18 => '18 Bulan',
+                                        24 => '24 Bulan',
+                                        30 => '30 Bulan',
+                                        36 => '36 Bulan',
+                                    ];
+                                }
+
+                                // Untuk cash, tergantung jumlah
                                 $jumlah = floatval($get('jumlah_pinjaman') ?? 0);
 
                                 if ($jumlah > 0 && $jumlah < 10000000) {
@@ -101,10 +140,10 @@ class PinjamanResource extends Resource
                                     6 => '6 Bulan',
                                     9 => '9 Bulan',
                                     12 => '12 Bulan',
-                                    15 => '15 Bulan',
                                     18 => '18 Bulan',
-                                    21 => '21 Bulan',
                                     24 => '24 Bulan',
+                                    30 => '30 Bulan',
+                                    36 => '36 Bulan',
                                 ];
                             })
                             ->required()
@@ -112,6 +151,13 @@ class PinjamanResource extends Resource
                             ->live()
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 if (!$state) return;
+
+                                $kategori = $get('kategori_pinjaman');
+
+                                // Skip calculation untuk elektronik
+                                if ($kategori === 'pinjaman_elektronik') {
+                                    return;
+                                }
 
                                 $jumlah = $get('jumlah_pinjaman');
                                 $bunga = 1.5;
@@ -144,8 +190,12 @@ class PinjamanResource extends Resource
                                     }
                                 }
                             })
-                            ->disabled(fn (Get $get) => !$get('jumlah_pinjaman'))
-                            ->helperText(fn (Get $get) => $get('jumlah_pinjaman') ? 'Pilih tenor sesuai dengan jumlah pinjaman' : 'Isi jumlah pinjaman terlebih dahulu'),
+                            ->disabled(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash' && !$get('jumlah_pinjaman'))
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_cash'
+                                    ? ($get('jumlah_pinjaman') ? 'Pilih tenor sesuai dengan jumlah pinjaman' : 'Isi jumlah pinjaman terlebih dahulu')
+                                    : 'Pilih tenor yang diinginkan'
+                            ),
 
                         Forms\Components\TextInput::make('bunga_per_tahun')
                             ->label('Bunga per Tahun (%)')
@@ -163,8 +213,12 @@ class PinjamanResource extends Resource
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->required()
-                            ->helperText('Dihitung otomatis'),
+                            ->required(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash')
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Akan dihitung setelah nominal ditentukan'
+                                    : 'Dihitung otomatis'
+                            ),
 
                         Forms\Components\TextInput::make('total_pinjaman_dengan_bunga')
                             ->label('Total Pinjaman + Bunga')
@@ -172,8 +226,12 @@ class PinjamanResource extends Resource
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->required()
-                            ->helperText('Total yang harus dibayar (pokok + bunga)'),
+                            ->required(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash')
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Akan dihitung setelah nominal ditentukan'
+                                    : 'Total yang harus dibayar (pokok + bunga)'
+                            ),
 
                         Forms\Components\TextInput::make('saldo_pinjaman')
                             ->label('Saldo Pinjaman (Sisa)')
@@ -181,8 +239,12 @@ class PinjamanResource extends Resource
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->required()
-                            ->helperText('Sisa yang harus dibayar'),
+                            ->required(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash')
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Akan diisi setelah nominal ditentukan'
+                                    : 'Sisa yang harus dibayar'
+                            ),
                     ])
                     ->columns(2),
 
@@ -190,11 +252,13 @@ class PinjamanResource extends Resource
                     ->schema([
                         Forms\Components\DatePicker::make('tanggal_pinjaman')
                             ->label('Tanggal Pinjaman')
-                            ->default(now())
-                            ->required()
+                            ->default(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash' ? now() : null)
+                            ->required(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash')
+                            ->disabled(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_elektronik')
+                            ->dehydrated()
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                if (!$state) return;
+                                if (!$state || $get('kategori_pinjaman') === 'pinjaman_elektronik') return;
 
                                 $tenor = $get('tenor');
 
@@ -207,13 +271,23 @@ class PinjamanResource extends Resource
                                         // Handle error
                                     }
                                 }
-                            }),
+                            })
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Akan diisi saat pencairan'
+                                    : null
+                            ),
 
                         Forms\Components\DatePicker::make('tanggal_jatuh_tempo')
                             ->label('Tanggal Jatuh Tempo')
-                            ->required()
+                            ->required(fn (Get $get) => $get('kategori_pinjaman') === 'pinjaman_cash')
                             ->disabled()
-                            ->dehydrated(),
+                            ->dehydrated()
+                            ->helperText(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Akan dihitung saat pencairan'
+                                    : null
+                            ),
                     ])
                     ->columns(2),
 
@@ -237,7 +311,12 @@ class PinjamanResource extends Resource
                         Forms\Components\Textarea::make('keterangan')
                             ->label('Keterangan')
                             ->rows(3)
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->placeholder(fn (Get $get) =>
+                                $get('kategori_pinjaman') === 'pinjaman_elektronik'
+                                    ? 'Detail barang elektronik yang diminta akan ditampilkan di sini...'
+                                    : 'Keterangan tambahan (opsional)'
+                            ),
                     ])
                     ->columns(1),
             ]);
@@ -262,20 +341,29 @@ class PinjamanResource extends Resource
                     ->label('Kategori')
                     ->badge()
                     ->formatStateUsing(fn ($record) => $record->kategori_pinjaman_label)
-                    ->color('info')
+                    ->color(fn ($record) => $record->isPinjamanElektronik() ? 'info' : 'success')
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('jumlah_pinjaman')
                     ->label('Pinjaman Pokok')
                     ->money('IDR')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->description(fn (Pinjaman $record) =>
+                        $record->isPinjamanElektronik() && $record->jumlah_pinjaman == 0
+                            ? '⚠️ Belum ditentukan'
+                            : null
+                    ),
 
                 Tables\Columns\TextColumn::make('total_pinjaman_dengan_bunga')
                     ->label('Total + Bunga')
                     ->money('IDR')
                     ->sortable()
-                    ->description(fn (Pinjaman $record) => 'Bunga: Rp ' . number_format($record->total_bunga, 0, ',', '.')),
+                    ->description(fn (Pinjaman $record) =>
+                        $record->total_bunga > 0
+                            ? 'Bunga: Rp ' . number_format($record->total_bunga, 0, ',', '.')
+                            : ($record->isPinjamanElektronik() ? 'Menunggu verifikasi' : null)
+                    ),
 
                 Tables\Columns\TextColumn::make('saldo_pinjaman')
                     ->label('Sisa Bayar')
@@ -297,7 +385,7 @@ class PinjamanResource extends Resource
                     })
                     ->badge()
                     ->color(function (Pinjaman $record) {
-                        if ($record->tenor == 0) return 'gray';
+                        if ($record->tenor == 0 || $record->angsuran_per_bulan == 0) return 'gray';
 
                         $totalDibayar = $record->total_pinjaman_dengan_bunga - $record->saldo_pinjaman;
                         $angsuranTerbayar = (int) floor($totalDibayar / $record->angsuran_per_bulan);
@@ -311,7 +399,11 @@ class PinjamanResource extends Resource
                         };
                     })
                     ->description(function (Pinjaman $record) {
-                        if ($record->tenor == 0) return '0% selesai';
+                        if ($record->tenor == 0 || $record->angsuran_per_bulan == 0) {
+                            return $record->isPinjamanElektronik() && $record->jumlah_pinjaman == 0
+                                ? 'Menunggu verifikasi'
+                                : '0% selesai';
+                        }
 
                         $totalDibayar = $record->total_pinjaman_dengan_bunga - $record->saldo_pinjaman;
                         $angsuranTerbayar = (int) floor($totalDibayar / $record->angsuran_per_bulan);
@@ -336,14 +428,16 @@ class PinjamanResource extends Resource
                     ->label('Tgl Pinjaman')
                     ->date('d M Y')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->placeholder('Belum ditentukan'),
 
                 Tables\Columns\TextColumn::make('tanggal_jatuh_tempo')
                     ->label('Jatuh Tempo')
                     ->date('d M Y')
                     ->sortable()
-                    ->color(fn ($record) => $record->tanggal_jatuh_tempo < now() && $record->saldo_pinjaman > 0 ? 'danger' : null)
-                    ->toggleable(),
+                    ->color(fn ($record) => $record->tanggal_jatuh_tempo && $record->tanggal_jatuh_tempo->isPast() && $record->saldo_pinjaman > 0 ? 'danger' : null)
+                    ->toggleable()
+                    ->placeholder('Belum ditentukan'),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
@@ -395,10 +489,10 @@ class PinjamanResource extends Resource
                         6 => '6 Bulan',
                         9 => '9 Bulan',
                         12 => '12 Bulan',
-                        15 => '15 Bulan',
                         18 => '18 Bulan',
-                        21 => '21 Bulan',
                         24 => '24 Bulan',
+                        30 => '30 Bulan',
+                        36 => '36 Bulan',
                     ])
                     ->multiple(),
 
@@ -414,16 +508,78 @@ class PinjamanResource extends Resource
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
 
+                    // Action khusus untuk Update Nominal Elektronik
+                    Tables\Actions\Action::make('update_nominal_elektronik')
+                        ->label('Set Nominal')
+                        ->icon('heroicon-o-currency-dollar')
+                        ->color('warning')
+                        ->visible(fn (Pinjaman $record) =>
+                            $record->isPinjamanElektronik()
+                            && in_array($record->status, ['diajukan', 'disetujui'])
+                            && $record->jumlah_pinjaman == 0
+                        )
+                        ->form([
+                            Forms\Components\Placeholder::make('info')
+                                ->label('Informasi Pinjaman')
+                                ->content(fn (Pinjaman $record) =>
+                                    "**No. Pinjaman:** {$record->no_pinjaman}\n\n" .
+                                    "**Anggota:** {$record->anggota->nama}\n\n" .
+                                    "**Tenor:** {$record->tenor} bulan\n\n" .
+                                    "**Keterangan Barang:**\n\n" .
+                                    ($record->keterangan ?? 'Tidak ada keterangan')
+                                ),
+
+                            Forms\Components\TextInput::make('jumlah_pinjaman')
+                                ->label('Nominal Pinjaman (Pokok)')
+                                ->numeric()
+                                ->prefix('Rp')
+                                ->required()
+                                ->minValue(500000)
+                                ->helperText('Masukkan nominal pinjaman setelah verifikasi barang'),
+
+                            Forms\Components\Textarea::make('catatan_admin')
+                                ->label('Catatan Admin')
+                                ->rows(3)
+                                ->placeholder('Catatan mengenai verifikasi barang (opsional)'),
+                        ])
+                        ->action(function (Pinjaman $record, array $data) {
+                            $jumlah = floatval($data['jumlah_pinjaman']);
+
+                            if ($record->updateNominalElektronik($jumlah, auth()->id())) {
+                                // Tambah catatan admin jika ada
+                                if (!empty($data['catatan_admin'])) {
+                                    $record->keterangan .= "\n\n[CATATAN ADMIN] " . $data['catatan_admin'];
+                                    $record->save();
+                                }
+
+                                Notification::make()
+                                    ->title('Nominal Berhasil Diset')
+                                    ->success()
+                                    ->body("Nominal pinjaman elektronik berhasil diset: Rp " . number_format($jumlah, 0, ',', '.'))
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('Gagal Set Nominal')
+                                    ->danger()
+                                    ->body('Nominal tidak dapat diset. Periksa status pinjaman.')
+                                    ->send();
+                            }
+                        }),
+
                     // Action untuk Verifikasi & Cairkan Pinjaman
                     Tables\Actions\Action::make('verifikasi_cairkan')
                         ->label('Verifikasi & Cairkan')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn (Pinjaman $record) => in_array($record->status, ['diajukan', 'disetujui']))
+                        ->visible(fn (Pinjaman $record) =>
+                            in_array($record->status, ['diajukan', 'disetujui'])
+                            && ($record->isPinjamanCash() || ($record->isPinjamanElektronik() && $record->jumlah_pinjaman > 0))
+                        )
                         ->requiresConfirmation()
                         ->modalHeading('Verifikasi dan Cairkan Pinjaman')
                         ->modalDescription(fn (Pinjaman $record) =>
                             "Apakah Anda yakin ingin mencairkan pinjaman {$record->no_pinjaman}?\n\n" .
+                            "Kategori: {$record->kategori_pinjaman_label}\n" .
                             "Jumlah Pokok: Rp " . number_format($record->jumlah_pinjaman, 0, ',', '.') . "\n" .
                             "Total + Bunga: Rp " . number_format($record->total_pinjaman_dengan_bunga, 0, ',', '.') . "\n" .
                             "Total Bunga: Rp " . number_format($record->total_bunga, 0, ',', '.')
@@ -455,6 +611,7 @@ class PinjamanResource extends Resource
                             Forms\Components\Placeholder::make('info_pinjaman')
                                 ->label('')
                                 ->content(fn (Pinjaman $record) =>
+                                    "**Kategori:** {$record->kategori_pinjaman_label}\n\n" .
                                     "**Pinjaman Pokok:** Rp " . number_format($record->jumlah_pinjaman, 0, ',', '.') . "\n\n" .
                                     "**Total + Bunga:** Rp " . number_format($record->total_pinjaman_dengan_bunga, 0, ',', '.') . "\n\n" .
                                     "**Total Bunga:** Rp " . number_format($record->total_bunga, 0, ',', '.') . "\n\n" .

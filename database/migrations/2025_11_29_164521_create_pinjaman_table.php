@@ -12,13 +12,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('anggota_id')->constrained()->onDelete('cascade');
             $table->string('no_pinjaman')->unique();
-            $table->decimal('jumlah_pinjaman', 15, 2);
-            $table->decimal('saldo_pinjaman', 15, 2);
+            $table->decimal('jumlah_pinjaman', 15, 2)->default(0);
+            $table->decimal('saldo_pinjaman', 15, 2)->default(0);
             $table->integer('tenor'); // dalam bulan
-            $table->decimal('bunga_per_tahun', 5, 2); // persentase
-            $table->decimal('angsuran_per_bulan', 15, 2);
-            $table->date('tanggal_pinjaman');
-            $table->date('tanggal_jatuh_tempo');
+            $table->decimal('bunga_per_tahun', 5, 2)->default(0); // persentase
+            $table->decimal('angsuran_per_bulan', 15, 2)->default(0);
+            $table->date('tanggal_pinjaman')->nullable();
+            $table->date('tanggal_jatuh_tempo')->nullable();
             $table->enum('kategori_pinjaman', [
                 'pinjaman_cash',
                 'pinjaman_elektronik'

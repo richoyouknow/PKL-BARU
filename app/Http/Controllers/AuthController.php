@@ -11,39 +11,50 @@ use App\Models\Anggota;
 
 class AuthController extends Controller
 {
-        public function login(Request $request)
-        {
-            $request->validate([
-                'email' => 'required|email|max:50',
-                'password' => 'required|max:50',
-            ]);
+    public function login(Request $request)
+    {
+        $request->validate([
+            'login' => 'required|max:50', // Ubah dari 'email' menjadi 'login'
+            'password' => 'required|max:50',
+        ]);
 
-            // Cek apakah user ada
-            $user = User::where('email', $request->email)->first();
+        // Tentukan apakah input adalah email atau nomor telepon
+        $loginType = filter_var($request->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'no_telepon';
 
-            if (!$user) {
-                return back()->with('failed', 'Email atau password salah');
-            }
-
-            // Cek status user
-            if ($user->status === 'verify') {
-                return back()->with('failed', 'Akun Anda belum diverifikasi oleh admin. Silakan tunggu verifikasi.');
-            }
-
-            if ($user->status === 'banned') {
-                return back()->with('failed', 'Akun Anda telah dinonaktifkan. Hubungi administrator untuk informasi lebih lanjut.');
-            }
-
-            // Cek kredensial login
-            if (Auth::attempt($request->only('email', 'password'), $request->remember)) {
-                if (Auth::user()->role == 'anggota') {
-                    return redirect('/anggota');
-                }
-                return redirect('/admin');
-            }
-
-            return back()->with('failed', 'Email atau password salah');
+        // Cari user berdasarkan email atau nomor telepon
+        if ($loginType === 'email') {
+            $user = User::where('email', $request->login)->first();
+        } else {
+            // Cari berdasarkan nomor telepon di tabel anggota
+            $anggota = Anggota::where('no_telepon', $request->login)->first();
+            $user = $anggota ? User::find($anggota->user_id) : null;
         }
+
+        if (!$user) {
+            return back()->with('failed', 'Email/No. HP atau password salah');
+        }
+
+        // Cek status user
+        if ($user->status === 'verify') {
+            return back()->with('failed', 'Akun Anda belum diverifikasi oleh admin. Silakan tunggu verifikasi.');
+        }
+
+        if ($user->status === 'banned') {
+            return back()->with('failed', 'Akun Anda telah dinonaktifkan. Hubungi administrator untuk informasi lebih lanjut.');
+        }
+
+        // Cek kredensial login
+        if (Hash::check($request->password, $user->password)) {
+            Auth::login($user, $request->remember);
+
+            if (Auth::user()->role == 'anggota') {
+                return redirect('/anggota');
+            }
+            return redirect('/admin');
+        }
+
+        return back()->with('failed', 'Email/No. HP atau password salah');
+    }
 
     public function register(Request $request)
     {
@@ -56,13 +67,23 @@ class AuthController extends Controller
             'agama' => 'required|in:Islam,Kristen,Katolik,Hindu,Buddha,Konghucu',
             'tempat_lahir' => 'required|max:50',
             'tanggal_lahir' => 'required|date',
-            'no_telepon' => 'required|max:15',
+            'no_telepon' => 'required|max:15|unique:anggotas,no_telepon',
             'alamat' => 'required',
             'jenis_identitas' => 'required|in:KTP,SIM,Paspor',
             'no_identitas' => 'required|max:50',
             'grup_wilayah' => 'required',
             'pekerjaan' => 'required|max:100',
             'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+
+            // Validasi baru untuk rekening bank
+            'nama_bank' => 'required|max:50',
+            'no_rekening' => 'required|max:30|unique:anggotas,no_rekening',
+            'atas_nama' => 'required|max:100',
+        ], [
+            'nama_bank.required' => 'Nama bank wajib diisi',
+            'no_rekening.required' => 'Nomor rekening wajib diisi',
+            'no_rekening.unique' => 'Nomor rekening sudah terdaftar',
+            'atas_nama.required' => 'Nama pemilik rekening wajib diisi',
         ]);
 
         try {
@@ -72,7 +93,7 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'role' => 'anggota',
-                'status' => 'verify', // Status awal: menunggu verifikasi
+                'status' => 'verify',
             ]);
 
             // Handle file upload
@@ -101,12 +122,15 @@ class AuthController extends Controller
                 'pendapatan' => $request->pendapatan,
                 'alamat_kantor' => $request->alamat_kantor,
                 'keterangan' => $request->keterangan,
+
+                // Data rekening bank
+                'nama_bank' => $request->nama_bank,
+                'no_rekening' => $request->no_rekening,
+                'atas_nama' => $request->atas_nama,
+
                 'foto' => $fotoName,
                 'tanggal_daftar' => now(),
             ]);
-
-            // JANGAN login otomatis, tunggu verifikasi admin
-            // Auth::login($user);
 
             return redirect('/login')->with('success', 'Registrasi berhasil! Akun Anda sedang menunggu verifikasi admin. Anda akan mendapat notifikasi via email setelah akun diverifikasi.');
         } catch (\Exception $e) {

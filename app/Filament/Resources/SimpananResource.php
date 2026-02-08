@@ -77,7 +77,6 @@ class SimpananResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $set, $operation) {
                                         if ($state && $operation === 'create') {
                                             $set('no_simpanan', Simpanan::generateNoSimpanan($state));
-                                            $set('no_rekening', Simpanan::generateNoRekening($state));
                                         }
                                     }),
                             ]),
@@ -98,19 +97,28 @@ class SimpananResource extends Resource
                                     })
                                     ->helperText('Format: Simp-POK/WJB/SKL/BJK-YYYYMMDD-XXXX (Otomatis)'),
 
-                                Forms\Components\TextInput::make('no_rekening')
-                                    ->label('Nomor Rekening')
-                                    ->required()
-                                    ->unique(ignoreRecord: true)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->default(function ($operation, $get) {
-                                        if ($operation === 'create' && $get('jenis_simpanan')) {
-                                            return Simpanan::generateNoRekening($get('jenis_simpanan'));
+                                Forms\Components\Placeholder::make('info_rekening')
+                                    ->label('Informasi Rekening Anggota')
+                                    ->content(function ($get, $record) {
+                                        $anggotaId = $get('anggota_id') ?? $record?->anggota_id;
+
+                                        if (!$anggotaId) {
+                                            return 'Pilih anggota terlebih dahulu';
                                         }
-                                        return null;
+
+                                        $anggota = Anggota::find($anggotaId);
+
+                                        if (!$anggota) {
+                                            return 'Anggota tidak ditemukan';
+                                        }
+
+                                        if ($anggota->no_rekening && $anggota->nama_bank) {
+                                            return "{$anggota->nama_bank} - {$anggota->no_rekening} a.n {$anggota->atas_nama}";
+                                        }
+
+                                        return 'Anggota belum memiliki rekening terdaftar';
                                     })
-                                    ->helperText('Format: SP/SW/SS/SB-YYYYMMDD-XXXX (Otomatis)'),
+                                    ->hidden(fn ($operation, $get) => $operation === 'create' && !$get('anggota_id')),
                             ]),
 
                         Grid::make(2)
@@ -158,12 +166,20 @@ class SimpananResource extends Resource
                     ->copyMessage('Nomor simpanan berhasil disalin')
                     ->weight('bold'),
 
-                TextColumn::make('no_rekening')
+                TextColumn::make('anggota.no_rekening')
                     ->label('No. Rekening')
                     ->searchable()
                     ->sortable()
                     ->copyable()
-                    ->copyMessage('Nomor rekening berhasil disalin'),
+                    ->copyMessage('Nomor rekening berhasil disalin')
+                    ->placeholder('-'),
+
+                TextColumn::make('anggota.nama_bank')
+                    ->label('Bank')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('-')
+                    ->toggleable(),
 
                 TextColumn::make('anggota.nama')
                     ->label('Nama Anggota')

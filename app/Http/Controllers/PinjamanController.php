@@ -74,14 +74,13 @@ class PinjamanController extends Controller
             'status_kolektibilitas' => $statusKolektibilitas,
             'limit_tersedia' => $limitTersedia,
             'limit_maksimal' => $limitMaksimal,
-            // 'bunga_per_tahun' => 1.5,
         ];
 
         return view('anggota.pinjaman', $data);
     }
 
     /**
-     * Show form pengajuan pinjaman baru
+     * Show form pengajuan pinjaman baru (UNIFIED FORM)
      */
     public function create()
     {
@@ -104,8 +103,8 @@ class PinjamanController extends Controller
             ->sum('saldo_pinjaman');
         $limitTersedia = $limitMaksimal - $totalSisaPinjaman;
 
-        // Tenor options (dalam bulan)
-        $tenorOptions = [3, 6, 9, 12, 15, 18, 21, 24];
+        // Tenor options (dalam bulan) - semua tenor untuk unified form
+        $tenorOptions = [3, 6, 9, 12, 18, 24, 30, 36];
 
         // Kategori pinjaman
         $kategoriOptions = [
@@ -126,75 +125,171 @@ class PinjamanController extends Controller
     }
 
     /**
-     * Store pengajuan pinjaman baru
+     * Store pengajuan pinjaman (UNIFIED - Handle both Cash & Elektronik)
      */
-public function store(Request $request)
-{
-    $user = Auth::user();
+    public function store(Request $request)
+    {
+        $user = Auth::user();
 
-    if (!$user) {
-        return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Anda harus login terlebih dahulu');
+        }
+
+        $anggota = Anggota::where('user_id', $user->id)->first();
+
+        if (!$anggota) {
+            return redirect()->back()->with('error', 'Data anggota tidak ditemukan untuk user Anda');
+        }
+
+        // Determine kategori pinjaman
+        $kategori = $request->input('kategori_pinjaman');
+
+        if ($kategori === 'pinjaman_cash') {
+            return $this->storePinjamanCash($request, $anggota);
+        } elseif ($kategori === 'pinjaman_elektronik') {
+            return $this->storePinjamanElektronik($request, $anggota);
+        }
+
+        return redirect()->back()->with('error', 'Kategori pinjaman tidak valid');
     }
 
-    $anggota = Anggota::where('user_id', $user->id)->first();
+    /**
+     * Store Pinjaman Cash
+     */
+    private function storePinjamanCash(Request $request, $anggota)
+    {
+        // Validasi untuk pinjaman cash
+        $validated = $request->validate([
+            'kategori_pinjaman' => 'required|in:pinjaman_cash',
+            'jumlah_pinjaman' => 'required|numeric|min:500000|max:25000000',
+            'tenor' => 'required|integer|in:3,6,9,12,18,24,30,36',
+            'bunga_per_tahun' => 'nullable|numeric|min:0|max:100',
+            'keterangan' => 'nullable|string|max:1000',
+        ], [
+            'jumlah_pinjaman.required' => 'Jumlah pinjaman harus diisi.',
+            'jumlah_pinjaman.min' => 'Jumlah pinjaman minimal Rp 500.000.',
+            'jumlah_pinjaman.max' => 'Jumlah pinjaman maksimal Rp 25.000.000.',
+            'tenor.required' => 'Tenor pinjaman harus dipilih.',
+            'tenor.in' => 'Tenor yang dipilih tidak valid.',
+        ]);
 
-    if (!$anggota) {
-        return redirect()->back()->with('error', 'Data anggota tidak ditemukan untuk user Anda');
+        // Validasi tenor berdasarkan jumlah pinjaman
+        if ($validated['jumlah_pinjaman'] < 10000000 && $validated['tenor'] > 12) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Untuk pinjaman di bawah Rp 10.000.000, tenor maksimal adalah 12 bulan.');
+        }
+
+        // Cek limit tersedia
+        $limitMaksimal = 25000000;
+        $totalSisaPinjaman = Pinjaman::where('anggota_id', $anggota->id)
+            ->whereIn('status', ['aktif', 'diproses', 'disetujui'])
+            ->sum('saldo_pinjaman');
+        $limitTersedia = $limitMaksimal - $totalSisaPinjaman;
+
+        if ($validated['jumlah_pinjaman'] > $limitTersedia) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Jumlah pinjaman melebihi limit tersedia Anda (Rp ' . number_format($limitTersedia, 0, ',', '.') . ')');
+        }
+
+        // Hitung angsuran per bulan
+        $bungaPerTahun = $validated['bunga_per_tahun'] ?? 1.5;
+        $angsuranPerBulan = Pinjaman::hitungAngsuran(
+            $validated['jumlah_pinjaman'],
+            $validated['tenor'],
+            $bungaPerTahun
+        );
+
+        // Hitung total pinjaman dengan bunga
+        $totalPinjamanDenganBunga = $angsuranPerBulan * $validated['tenor'];
+
+        // Hitung tanggal jatuh tempo
+        $tanggalPinjaman = now();
+        $tanggalJatuhTempo = now()->addMonths((int) $validated['tenor']);
+
+        // Buat pinjaman baru
+        $pinjaman = Pinjaman::create([
+            'anggota_id' => $anggota->id,
+            'kategori_pinjaman' => 'pinjaman_cash',
+            'jumlah_pinjaman' => $validated['jumlah_pinjaman'],
+            'total_pinjaman_dengan_bunga' => $totalPinjamanDenganBunga,
+            'saldo_pinjaman' => $totalPinjamanDenganBunga,
+            'tenor' => $validated['tenor'],
+            'bunga_per_tahun' => $bungaPerTahun,
+            'angsuran_per_bulan' => $angsuranPerBulan,
+            'tanggal_pinjaman' => $tanggalPinjaman,
+            'tanggal_jatuh_tempo' => $tanggalJatuhTempo,
+            'status' => 'diajukan',
+            'keterangan' => $validated['keterangan'],
+        ]);
+
+        return redirect()->route('pinjaman.index')
+            ->with('success', 'Pengajuan pinjaman cash berhasil! No. Pinjaman: ' . $pinjaman->no_pinjaman . '. Menunggu persetujuan admin.');
     }
 
-    // Validasi
-    $validated = $request->validate([
-        'kategori_pinjaman' => 'required|in:pinjaman_cash,pinjaman_elektronik',
-        'jumlah_pinjaman' => 'required|numeric|min:500000|max:25000000',
-        'tenor' => 'required|integer|in:3,6,9,12,15,18,21,24',
-        'bunga_per_tahun' => 'nullable|numeric|min:0|max:100',
-        'keterangan' => 'nullable|string|max:1000',
-    ]);
+    /**
+     * Store Pinjaman Elektronik (TANPA NOMINAL - hanya keterangan barang)
+     */
+    private function storePinjamanElektronik(Request $request, $anggota)
+    {
+        // Validasi untuk pinjaman elektronik
+        $validated = $request->validate([
+            'kategori_pinjaman' => 'required|in:pinjaman_elektronik',
+            'keterangan_barang' => 'required|string|min:10|max:1000',
+            'tenor' => 'required|integer|in:3,6,9,12,18,24,30,36',
+            'terms' => 'required|accepted',
+            'keterangan' => 'nullable|string|max:1000',
+        ], [
+            'keterangan_barang.required' => 'Keterangan barang elektronik harus diisi.',
+            'keterangan_barang.min' => 'Keterangan barang minimal 10 karakter.',
+            'keterangan_barang.max' => 'Keterangan barang maksimal 1000 karakter.',
+            'tenor.required' => 'Tenor pinjaman harus dipilih.',
+            'tenor.in' => 'Tenor yang dipilih tidak valid.',
+            'terms.required' => 'Anda harus menyetujui syarat dan ketentuan.',
+            'terms.accepted' => 'Anda harus menyetujui syarat dan ketentuan.',
+        ]);
 
-    // Cek limit tersedia
-    $limitMaksimal = 25000000;
-    $totalSisaPinjaman = Pinjaman::where('anggota_id', $anggota->id)
-        ->whereIn('status', ['aktif', 'diproses', 'disetujui'])
-        ->sum('saldo_pinjaman');
-    $limitTersedia = $limitMaksimal - $totalSisaPinjaman;
+        try {
+            DB::beginTransaction();
 
-    if ($validated['jumlah_pinjaman'] > $limitTersedia) {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Jumlah pinjaman melebihi limit tersedia Anda (Rp ' . number_format($limitTersedia, 0, ',', '.') . ')');
+            // Build keterangan lengkap
+            $keteranganLengkap = "PINJAMAN ELEKTRONIK\n\n";
+            $keteranganLengkap .= "Barang yang diminta:\n" . $validated['keterangan_barang'];
+
+            if (!empty($validated['keterangan'])) {
+                $keteranganLengkap .= "\n\nCatatan tambahan:\n" . $validated['keterangan'];
+            }
+
+            $keteranganLengkap .= "\n\nTenor yang dipilih: " . $validated['tenor'] . " bulan";
+            $keteranganLengkap .= "\n\n*Nominal pinjaman akan ditentukan setelah verifikasi barang di koperasi.";
+
+            // Buat pinjaman elektronik dengan nominal 0 (akan diupdate oleh admin)
+            $pinjaman = Pinjaman::create([
+                'anggota_id' => $anggota->id,
+                'kategori_pinjaman' => 'pinjaman_elektronik',
+                'jumlah_pinjaman' => 0,
+                'total_pinjaman_dengan_bunga' => 0,
+                'saldo_pinjaman' => 0,
+                'tenor' => $validated['tenor'],
+                'bunga_per_tahun' => 1.5,
+                'angsuran_per_bulan' => 0,
+                'status' => 'diajukan',
+                'keterangan' => $keteranganLengkap,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('pinjaman.index')
+                ->with('success', 'Pengajuan pinjaman elektronik berhasil! No. Pinjaman: ' . $pinjaman->no_pinjaman . '. Silakan datang ke koperasi untuk verifikasi barang dan penentuan nominal pinjaman.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
-
-    // Hitung angsuran per bulan
-    $bungaPerTahun = $validated['bunga_per_tahun'] ?? 1.5;
-    $angsuranPerBulan = Pinjaman::hitungAngsuran(
-        $validated['jumlah_pinjaman'],
-        $validated['tenor'],
-        $bungaPerTahun
-    );
-
-    // Hitung tanggal jatuh tempo (tanggal pinjaman + tenor bulan)
-    $tanggalPinjaman = now();
-    $tanggalJatuhTempo = now()->addMonths((int) $validated['tenor']);
-
-    // Buat pinjaman baru
-    $pinjaman = Pinjaman::create([
-        'anggota_id' => $anggota->id,
-        'kategori_pinjaman' => $validated['kategori_pinjaman'],
-        'jumlah_pinjaman' => $validated['jumlah_pinjaman'],
-        'saldo_pinjaman' => $validated['jumlah_pinjaman'], // Saldo awal = jumlah pinjaman
-        'tenor' => $validated['tenor'],
-        'bunga_per_tahun' => $bungaPerTahun,
-        'angsuran_per_bulan' => $angsuranPerBulan,
-        'tanggal_pinjaman' => $tanggalPinjaman,
-        'tanggal_jatuh_tempo' => $tanggalJatuhTempo,
-        'status' => 'diajukan', // Status awal
-        'keterangan' => $validated['keterangan'],
-    ]);
-
-    // Redirect ke halaman daftar pinjaman dengan notifikasi sukses
-    return redirect()->route('pinjaman.index')
-        ->with('success', 'Pengajuan pinjaman berhasil diajukan! No. Pengajuan: #' . str_pad($pinjaman->id, 6, '0', STR_PAD_LEFT) . '. Menunggu persetujuan admin.');
-}
 
     /**
      * Display detail pinjaman
@@ -222,7 +317,7 @@ public function show($id)
         ->firstOrFail();
 
     // Hitung statistik
-    $totalDibayar = $pinjaman->jumlah_pinjaman - $pinjaman->saldo_pinjaman;
+    $totalDibayar = $pinjaman->total_pinjaman_dengan_bunga - $pinjaman->saldo_pinjaman;
 
     // Hitung jumlah angsuran yang sudah dibayar
     $jumlahAngsuranDibayar = 0;
@@ -231,9 +326,13 @@ public function show($id)
     }
 
     $sisaTenor = max(0, $pinjaman->tenor - $jumlahAngsuranDibayar);
-    $persentaseDibayar = ($pinjaman->jumlah_pinjaman > 0)
-        ? ($totalDibayar / $pinjaman->jumlah_pinjaman) * 100
+    $persentaseDibayar = ($pinjaman->total_pinjaman_dengan_bunga > 0)
+        ? ($totalDibayar / $pinjaman->total_pinjaman_dengan_bunga) * 100
         : 0;
+
+    // PERBAIKAN: Gunakan method helper yang aman
+    $isTerlambat = $pinjaman->isTerlambat();
+    $hariKeterlambatan = $isTerlambat ? $pinjaman->hari_keterlambatan : 0;
 
     $data = [
         'pinjaman' => $pinjaman,
@@ -242,10 +341,8 @@ public function show($id)
         'jumlah_angsuran_dibayar' => $jumlahAngsuranDibayar,
         'sisa_tenor' => $sisaTenor,
         'persentase_dibayar' => $persentaseDibayar,
-        'is_terlambat' => ($pinjaman->status == 'aktif' && $pinjaman->tanggal_jatuh_tempo < now()),
-        'hari_keterlambatan' => ($pinjaman->status == 'aktif' && $pinjaman->tanggal_jatuh_tempo < now())
-            ? now()->diffInDays($pinjaman->tanggal_jatuh_tempo)
-            : 0,
+        'is_terlambat' => $isTerlambat,
+        'hari_keterlambatan' => $hariKeterlambatan,
     ];
 
     return view('anggota.detail_pinjaman', $data);

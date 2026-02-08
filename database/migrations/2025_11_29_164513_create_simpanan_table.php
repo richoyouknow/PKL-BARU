@@ -6,16 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('simpanans', function (Blueprint $table) {
             $table->id();
             $table->foreignId('anggota_id')->constrained()->onDelete('cascade');
             $table->string('no_simpanan')->unique()->comment('Format: PJM-YYYYMMDD-XXXX');
-            $table->string('no_rekening')->unique()->comment('Format: SP/SW/SS/SB-YYYYMMDD-XXXX');
+            // no_rekening dihapus, karena sekarang ada di tabel anggotas
             $table->enum('jenis_simpanan', [
                 'simpanan_pokok',
                 'simpanan_wajib',
@@ -32,13 +29,9 @@ return new class extends Migration
             $table->index('jenis_simpanan');
             $table->index('status');
             $table->index('no_simpanan');
-            $table->index('no_rekening');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('simpanans');

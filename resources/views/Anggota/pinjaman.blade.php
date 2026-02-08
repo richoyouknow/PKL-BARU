@@ -368,13 +368,13 @@
                                                     </td>
                                                 <td class="tw-px-6 tw-py-5">
                                                     <div class="tw-flex tw-items-center tw-gap-2
-                                                        @if($pinjaman->tanggal_jatuh_tempo->isPast() && $pinjaman->status != 'lunas')
+                                                        @if($pinjaman->tanggal_jatuh_tempo && $pinjaman->tanggal_jatuh_tempo->isPast() && $pinjaman->status != 'lunas')
                                                             tw-text-red-600 dark:tw-text-red-400
                                                         @else
                                                             tw-text-slate-700 dark:tw-text-slate-300
                                                         @endif">
                                                         <span class="material-symbols-outlined tw-text-base">calendar_today</span>
-                                                        <span class="tw-text-sm">{{ $pinjaman->tanggal_jatuh_tempo->format('d M Y') }}</span>
+                                                        {{ $pinjaman->tanggal_jatuh_tempo ? $pinjaman->tanggal_jatuh_tempo->format('d M Y') : 'Belum ditentukan' }}
                                                     </div>
                                                 </td>
                                                 <td class="tw-px-6 tw-py-5 tw-text-right">
@@ -460,13 +460,13 @@
                                             <span class="tw-text-slate-500 dark:tw-text-slate-400">Jatuh Tempo:</span>
                                             <div
                                                 class="tw-flex tw-items-center tw-gap-1.5
-                                                    @if($pinjaman->tanggal_jatuh_tempo->isPast() && $pinjaman->status != 'lunas')
+                                                   @if($pinjaman->tanggal_jatuh_tempo && $pinjaman->tanggal_jatuh_tempo->isPast() && $pinjaman->status != 'lunas')
                                                         tw-text-red-600 dark:tw-text-red-400
                                                     @else
                                                         tw-text-slate-700 dark:tw-text-slate-300
                                                     @endif tw-font-medium">
                                                 <span class="material-symbols-outlined tw-text-base">calendar_today</span>
-                                                <span>{{ $pinjaman->tanggal_jatuh_tempo->format('d M Y') }}</span>
+                                                {{ $pinjaman->tanggal_jatuh_tempo ? $pinjaman->tanggal_jatuh_tempo->format('d M Y') : 'Belum ditentukan' }}
                                             </div>
                                         </div>
                                     </div>

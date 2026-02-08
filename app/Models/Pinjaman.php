@@ -19,7 +19,7 @@ class Pinjaman extends Model
         'no_pinjaman',
         'kategori_pinjaman',
         'jumlah_pinjaman',
-        'total_pinjaman_dengan_bunga', // BARU: Total yang harus dibayar (pokok + bunga)
+        'total_pinjaman_dengan_bunga',
         'saldo_pinjaman',
         'tenor',
         'bunga_per_tahun',
@@ -49,6 +49,11 @@ class Pinjaman extends Model
     public function transaksi(): HasMany
     {
         return $this->hasMany(Transaksi::class);
+    }
+
+    public function pembayarans(): HasMany
+    {
+        return $this->hasMany(Pembayaran::class);
     }
 
     public function getKategoriPinjamanLabelAttribute(): string
@@ -143,12 +148,37 @@ class Pinjaman extends Model
         return $query->where('anggota_id', $anggotaId);
     }
 
+    // Scope untuk pinjaman elektronik
+    public function scopePinjamanElektronik($query)
+    {
+        return $query->where('kategori_pinjaman', 'pinjaman_elektronik');
+    }
+
+    // Scope untuk pinjaman cash
+    public function scopePinjamanCash($query)
+    {
+        return $query->where('kategori_pinjaman', 'pinjaman_cash');
+    }
+
+    // Helper method: Check if pinjaman elektronik
+    public function isPinjamanElektronik(): bool
+    {
+        return $this->kategori_pinjaman === 'pinjaman_elektronik';
+    }
+
+    // Helper method: Check if pinjaman cash
+    public function isPinjamanCash(): bool
+    {
+        return $this->kategori_pinjaman === 'pinjaman_cash';
+    }
+
     // Boot method untuk generate no_pinjaman otomatis
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($pinjaman) {
+            // Generate nomor pinjaman
             if (empty($pinjaman->no_pinjaman)) {
                 $pinjaman->no_pinjaman = static::generateNoPinjaman();
             }
@@ -163,8 +193,10 @@ class Pinjaman extends Model
                 $pinjaman->status = 'diajukan';
             }
 
-            // Hitung angsuran per bulan dan total pinjaman dengan bunga
-            if (!empty($pinjaman->tenor) && !empty($pinjaman->jumlah_pinjaman)) {
+            // KHUSUS PINJAMAN CASH: Hitung angsuran dan set tanggal
+            if ($pinjaman->kategori_pinjaman === 'pinjaman_cash' && !empty($pinjaman->tenor) && !empty($pinjaman->jumlah_pinjaman) && $pinjaman->jumlah_pinjaman > 0) {
+
+                // Hitung angsuran
                 $pinjaman->angsuran_per_bulan = static::hitungAngsuran(
                     $pinjaman->jumlah_pinjaman,
                     $pinjaman->tenor,
@@ -173,11 +205,33 @@ class Pinjaman extends Model
 
                 // Total yang harus dibayar = angsuran × tenor
                 $pinjaman->total_pinjaman_dengan_bunga = $pinjaman->angsuran_per_bulan * $pinjaman->tenor;
+
+                // Set saldo = total pinjaman
+                if (!isset($pinjaman->saldo_pinjaman)) {
+                    $pinjaman->saldo_pinjaman = $pinjaman->total_pinjaman_dengan_bunga;
+                }
+
+                // Set tanggal pinjaman jika belum ada
+                if (empty($pinjaman->tanggal_pinjaman)) {
+                    $pinjaman->tanggal_pinjaman = now();
+                }
+
+                // Set tanggal jatuh tempo
+                if (empty($pinjaman->tanggal_jatuh_tempo) && !empty($pinjaman->tenor)) {
+                    $pinjaman->tanggal_jatuh_tempo = now()->addMonths($pinjaman->tenor);
+                }
             }
 
-            // Set saldo_pinjaman = total_pinjaman_dengan_bunga saat pertama kali dibuat
-            if (empty($pinjaman->saldo_pinjaman)) {
-                $pinjaman->saldo_pinjaman = $pinjaman->total_pinjaman_dengan_bunga ?? $pinjaman->jumlah_pinjaman;
+            // KHUSUS PINJAMAN ELEKTRONIK: Nominal 0, tanggal null, akan diisi nanti oleh admin
+            if ($pinjaman->kategori_pinjaman === 'pinjaman_elektronik') {
+                // Pastikan nilai default
+                $pinjaman->jumlah_pinjaman = $pinjaman->jumlah_pinjaman ?? 0;
+                $pinjaman->total_pinjaman_dengan_bunga = $pinjaman->total_pinjaman_dengan_bunga ?? 0;
+                $pinjaman->saldo_pinjaman = $pinjaman->saldo_pinjaman ?? 0;
+                $pinjaman->angsuran_per_bulan = $pinjaman->angsuran_per_bulan ?? 0;
+
+                // Tanggal akan diisi setelah admin set nominal dan approve
+                // tanggal_pinjaman dan tanggal_jatuh_tempo dibiarkan NULL
             }
         });
     }
@@ -317,6 +371,11 @@ class Pinjaman extends Model
             return false;
         }
 
+        // Untuk pinjaman elektronik, pastikan nominal sudah diisi
+        if ($this->isPinjamanElektronik() && $this->jumlah_pinjaman <= 0) {
+            return false;
+        }
+
         try {
             \DB::beginTransaction();
 
@@ -392,6 +451,47 @@ class Pinjaman extends Model
                 'admin_id' => $adminId ?? auth()->id(),
                 'diverifikasi_pada' => now(),
             ]);
+
+            \DB::commit();
+            return true;
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return false;
+        }
+    }
+
+    /**
+     * Method khusus untuk update nominal pinjaman elektronik oleh admin
+     * Digunakan setelah anggota datang ke koperasi
+     */
+    public function updateNominalElektronik($jumlahPinjaman, $adminId = null): bool
+    {
+        // Hanya untuk pinjaman elektronik yang masih diajukan/disetujui
+        if (!$this->isPinjamanElektronik() || !in_array($this->status, ['diajukan', 'disetujui'])) {
+            return false;
+        }
+
+        if ($jumlahPinjaman <= 0) {
+            return false;
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            // Update nominal dan hitung ulang angsuran
+            $this->jumlah_pinjaman = $jumlahPinjaman;
+            $this->angsuran_per_bulan = static::hitungAngsuran(
+                $jumlahPinjaman,
+                $this->tenor,
+                $this->bunga_per_tahun
+            );
+            $this->total_pinjaman_dengan_bunga = $this->angsuran_per_bulan * $this->tenor;
+            $this->saldo_pinjaman = $this->total_pinjaman_dengan_bunga;
+
+            // Tambahkan keterangan update nominal
+            $this->keterangan .= "\n\n[UPDATED] Nominal pinjaman diupdate oleh admin: Rp " . number_format($jumlahPinjaman, 0, ',', '.') . " pada " . now()->format('d/m/Y H:i');
+
+            $this->save();
 
             \DB::commit();
             return true;

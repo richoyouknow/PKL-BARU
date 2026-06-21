@@ -49,7 +49,6 @@ class AnggotaResource extends Resource
                                     ->label('User')
                                     ->relationship('user', 'name')
                                     ->searchable()
-                                    ->preload()
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->createOptionForm([
@@ -338,5 +337,11 @@ class AnggotaResource extends Resource
             'view' => Pages\ViewAnggota::route('/{record}'),
             'edit' => Pages\EditAnggota::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['user']);
     }
 }

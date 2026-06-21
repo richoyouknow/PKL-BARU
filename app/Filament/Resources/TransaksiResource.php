@@ -298,6 +298,7 @@ class TransaksiResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['anggota', 'simpanan', 'pinjaman', 'admin'])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

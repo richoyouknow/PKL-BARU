@@ -401,7 +401,11 @@ class UserResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('status', 'verify')->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('user_verify_count', 120, function () {
+            return static::getModel()::where('status', 'verify')->count();
+        });
+
+        return $count ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string

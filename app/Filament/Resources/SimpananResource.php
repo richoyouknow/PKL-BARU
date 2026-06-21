@@ -51,7 +51,6 @@ class SimpananResource extends Resource
                                     ->label('Anggota')
                                     ->relationship('anggota', 'nama')
                                     ->searchable()
-                                    ->preload()
                                     ->required()
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set) {
@@ -247,8 +246,7 @@ class SimpananResource extends Resource
                 SelectFilter::make('anggota_id')
                     ->label('Anggota')
                     ->relationship('anggota', 'nama')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
 
                 TernaryFilter::make('has_pending_penarikan')
                     ->label('Penarikan Pending')
@@ -548,10 +546,12 @@ class SimpananResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereHas('transaksi', function($query) {
-            $query->where('jenis_transaksi', Transaksi::JENIS_PENARIKAN_SIMPANAN)
-                  ->where('status', Transaksi::STATUS_MENUNGGU_VERIFIKASI);
-        })->count();
+        $count = \Illuminate\Support\Facades\Cache::remember('simpanan_penarikan_pending_count', 120, function () {
+            return static::getModel()::whereHas('transaksi', function($query) {
+                $query->where('jenis_transaksi', Transaksi::JENIS_PENARIKAN_SIMPANAN)
+                      ->where('status', Transaksi::STATUS_MENUNGGU_VERIFIKASI);
+            })->count();
+        });
 
         return $count > 0 ? (string) $count : null;
     }

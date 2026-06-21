@@ -15,7 +15,7 @@
                     </h1>
                 </div>
                 <div class="col-lg-6 text-center wow fadeIn" data-wow-delay="0.5s">
-                    <img src="denmart.jpeg" class="img-fluid rounded shadow" alt="Header Image">
+                    <img src="denmart.jpeg" class="img-fluid rounded shadow" alt="Header Image" loading="lazy">
                 </div>
             </div>
         </div>
@@ -404,9 +404,9 @@
 
                 <div class="col-lg-5 wow fadeIn" data-wow-delay="0.1s">
                     <div class="owl-carousel header-carousel about-carousel">
-                        <img class="img-fluid rounded" src="iStudio-1.0.0/img/hero-slider-1.jpg" alt="">
-                        <img class="img-fluid rounded" src="iStudio-1.0.0/img/hero-slider-2.jpg" alt="">
-                        <img class="img-fluid rounded" src="iStudio-1.0.0/img/hero-slider-3.jpg" alt="">
+                        <img class="img-fluid rounded" src="iStudio-1.0.0/img/hero-slider-1.jpg" alt="" loading="lazy">
+                        <img class="img-fluid rounded" src="iStudio-1.0.0/img/hero-slider-2.jpg" alt="" loading="lazy">
+                        <img class="img-fluid rounded" src="iStudio-1.0.0/img/hero-slider-3.jpg" alt="" loading="lazy">
                     </div>
                 </div>
                 <div class="col-lg-7 wow fadeIn" data-wow-delay="0.5s">
@@ -458,7 +458,7 @@
                         @forelse($activities as $index => $activity)
                             <div class="col-md-6 col-lg-4 wow fadeIn" data-wow-delay="{{ 0.2 + ($index * 0.1) }}s">
                                 <div class="project-item position-relative overflow-hidden">
-                                    <img class="img-fluid w-100" src="{{ Storage::url($activity->image) }}" alt="{{ $activity->title }}">
+                                    <img class="img-fluid w-100" src="{{ Storage::url($activity->image) }}" alt="{{ $activity->title }}" loading="lazy">
                                     <a class="project-overlay text-decoration-none" href="#!">
                                         <h4 class="text-white">{{ $activity->title }}</h4>
                                         <small class="text-white">{{ $activity->project_count }} Projects</small>
@@ -466,9 +466,9 @@
                                 </div>
                             </div>
                         @empty
-                            <div class="col-md-6 col-lg-4 wow fadeIn" data-wow-delay="0.2s">
+                             <div class="col-md-6 col-lg-4 wow fadeIn" data-wow-delay="0.2s">
                                 <div class="project-item position-relative overflow-hidden">
-                                    <img class="img-fluid w-100" src="iStudio-1.0.0/img/project-1.jpg" alt="">
+                                    <img class="img-fluid w-100" src="iStudio-1.0.0/img/project-1.jpg" alt="" loading="lazy">
                                     <a class="project-overlay text-decoration-none" href="#!">
                                         <h4 class="text-white">Kitchen</h4>
                                         <small class="text-white">72 Projects</small>
@@ -477,7 +477,7 @@
                             </div>
                             <div class="col-md-6 col-lg-4 wow fadeIn" data-wow-delay="0.3s">
                                 <div class="project-item position-relative overflow-hidden">
-                                    <img class="img-fluid w-100" src="iStudio-1.0.0/img/project-2.jpg" alt="">
+                                    <img class="img-fluid w-100" src="iStudio-1.0.0/img/project-2.jpg" alt="" loading="lazy">
                                     <a class="project-overlay text-decoration-none" href="#!">
                                         <h4 class="text-white">Bathroom</h4>
                                         <small class="text-white">67 Projects</small>
@@ -486,7 +486,7 @@
                             </div>
                             <div class="col-md-6 col-lg-4 wow fadeIn" data-wow-delay="0.4s">
                                 <div class="project-item position-relative overflow-hidden">
-                                    <img class="img-fluid w-100" src="iStudio-1.0.0/img/project-3.jpg" alt="">
+                                    <img class="img-fluid w-100" src="iStudio-1.0.0/img/project-3.jpg" alt="" loading="lazy">
                                     <a class="project-overlay text-decoration-none" href="#!">
                                         <h4 class="text-white">Bedroom</h4>
                                         <small class="text-white">53 Projects</small>
@@ -512,7 +512,7 @@
             @forelse($members as $index => $member)
                 <div class="col-md-6 col-lg-3 wow fadeIn" data-wow-delay="{{ 0.1 + ($index * 0.2) }}s">
                     <div class="team-item position-relative overflow-hidden">
-                        <img class="img-fluid w-100" src="{{ Storage::url($member->photo) }}" alt="{{ $member->name }}">
+                         <img class="img-fluid w-100" src="{{ Storage::url($member->photo) }}" alt="{{ $member->name }}" loading="lazy">
                         <div class="team-overlay">
                             <small class="mb-2">{{ $member->position }}</small>
                             <h4 class="lh-base text-light">{{ $member->name }}</h4>

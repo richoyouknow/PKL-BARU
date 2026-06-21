@@ -42,7 +42,6 @@ class PinjamanResource extends Resource
                             ->label('Anggota')
                             ->relationship('anggota', 'nama')
                             ->searchable()
-                            ->preload()
                             ->required(),
                     ])
                     ->columns(1),
@@ -498,8 +497,7 @@ class PinjamanResource extends Resource
 
                 Tables\Filters\SelectFilter::make('anggota')
                     ->relationship('anggota', 'nama')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
 
                 Tables\Filters\TrashedFilter::make(),
             ])
@@ -712,6 +710,7 @@ class PinjamanResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['anggota'])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
@@ -719,7 +718,11 @@ class PinjamanResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('status', 'diajukan')->count() ?: null;
+        $count = \Illuminate\Support\Facades\Cache::remember('pinjaman_diajukan_count', 120, function () {
+            return static::getModel()::where('status', 'diajukan')->count();
+        });
+
+        return $count ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string

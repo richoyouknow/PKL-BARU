@@ -127,7 +127,7 @@ class TransaksiController extends Controller
             $query->where('status', $request->status);
         }
 
-        $transaksis = $query->orderBy('created_at', 'desc')->get();
+        $transaksis = $query->orderBy('created_at', 'desc')->lazy();
 
         // Buat CSV
         $filename = 'transaksi_' . str_replace(' ', '_', $anggota->nama) . '_' . date('Y-m-d_His') . '.csv';
